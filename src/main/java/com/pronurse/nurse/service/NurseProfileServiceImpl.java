@@ -41,6 +41,7 @@ public class NurseProfileServiceImpl implements NurseProfileService {
 
         // Update core User entity display name alongside domain profile record
         user.setName(request.getName());
+        user.setEmail(request.getEmail());
         userRepository.save(user);
 
         NurseProfile profile = nurseProfileRepository.findByUserMobile(mobile)

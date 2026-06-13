@@ -39,6 +39,7 @@ public class PatientProfileServiceImpl implements PatientProfileService {
                 .orElseThrow(() -> new ApplicationException("User record connection dropped for identity context: " + mobile));
 
         user.setName(request.getName());
+        user.setEmail(request.getEmail());
         userRepository.save(user);
 
         PatientProfile profile = patientProfileRepository.findByUserMobile(mobile)
