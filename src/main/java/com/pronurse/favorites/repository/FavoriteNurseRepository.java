@@ -24,4 +24,4 @@ public interface FavoriteNurseRepository extends JpaRepository<FavoriteNurse, Lo
     long countByPatientId(@Param("patientId") Long patientId);
 }
 
-// Made with Bob
+

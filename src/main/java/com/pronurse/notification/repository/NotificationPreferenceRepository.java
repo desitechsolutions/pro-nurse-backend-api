@@ -12,4 +12,4 @@ public interface NotificationPreferenceRepository extends JpaRepository<Notifica
     Optional<NotificationPreference> findByUserId(Long userId);
 }
 
-// Made with Bob
+

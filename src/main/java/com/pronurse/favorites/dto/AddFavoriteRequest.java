@@ -22,4 +22,4 @@ public class AddFavoriteRequest {
     private String notes;
 }
 
-// Made with Bob
+

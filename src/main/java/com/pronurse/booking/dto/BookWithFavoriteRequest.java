@@ -49,4 +49,4 @@ public class BookWithFavoriteRequest {
     private String remarks;
 }
 
-// Made with Bob
+

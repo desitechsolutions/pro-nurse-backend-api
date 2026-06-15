@@ -24,4 +24,4 @@ public class NotificationPreferenceRequest {
     private Boolean promotionalAlerts;
 }
 
-// Made with Bob
+

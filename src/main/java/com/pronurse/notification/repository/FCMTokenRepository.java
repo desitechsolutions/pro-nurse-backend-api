@@ -26,4 +26,4 @@ public interface FCMTokenRepository extends JpaRepository<FCMToken, Long> {
     void deleteInactiveTokensByUserId(@Param("userId") Long userId);
 }
 
-// Made with Bob
+
