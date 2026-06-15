@@ -642,7 +642,9 @@ Follow conventional commits:
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+Copyright © 2026 Biruma Technology Solutions Pvt Ltd.
+
+This project is proprietary software developed by DesiTech Solutions. No part of this software may be copied, modified, distributed, sublicensed, or used without prior written permission from the copyright holder.
 
 ---
 
