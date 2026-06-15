@@ -49,4 +49,74 @@ public class DispatchAlertService {
 
         messagingTemplate.convertAndSend(destination, alert);
     }
+
+    /**
+     * Notifies nurse about booking cancellation
+     */
+    public void broadcastCancellationToNurse(String nurseMobile, String bookingNo, String reason) {
+        String destination = "/queue/nurse/" + nurseMobile;
+
+        LiveAlertPayload alert = LiveAlertPayload.builder()
+                .eventType("BOOKING_CANCELLED")
+                .bookingNo(bookingNo)
+                .title("Booking Cancelled")
+                .message("Patient has cancelled booking " + bookingNo + ". Reason: " + reason)
+                .build();
+
+        messagingTemplate.convertAndSend(destination, alert);
+        log.debug("Cancellation notification sent to nurse: {}", nurseMobile);
+    }
+
+    /**
+     * Notifies patient about booking cancellation
+     */
+    public void broadcastCancellationToPatient(String patientMobile, String bookingNo, String reason) {
+        String destination = "/queue/patient/" + patientMobile;
+
+        LiveAlertPayload alert = LiveAlertPayload.builder()
+                .eventType("BOOKING_CANCELLED")
+                .bookingNo(bookingNo)
+                .title("Booking Cancelled")
+                .message("Nurse has cancelled booking " + bookingNo + ". Reason: " + reason)
+                .build();
+
+        messagingTemplate.convertAndSend(destination, alert);
+        log.debug("Cancellation notification sent to patient: {}", patientMobile);
+    }
+
+    /**
+     * Notifies nurse about booking rescheduling
+     */
+    public void broadcastRescheduleToNurse(String nurseMobile, String bookingNo, String newDate, String newTime, String reason) {
+        String destination = "/queue/nurse/" + nurseMobile;
+
+        LiveAlertPayload alert = LiveAlertPayload.builder()
+                .eventType("BOOKING_RESCHEDULED")
+                .bookingNo(bookingNo)
+                .title("Booking Rescheduled")
+                .message("Booking " + bookingNo + " has been rescheduled to " + newDate + " at " + newTime +
+                        (reason != null ? ". Reason: " + reason : ""))
+                .build();
+
+        messagingTemplate.convertAndSend(destination, alert);
+        log.debug("Reschedule notification sent to nurse: {}", nurseMobile);
+    }
+
+    /**
+     * Broadcasts emergency alert to nurse with priority flag
+     */
+    public void broadcastEmergencyAlert(String nurseMobile, BookingAssignment assignment) {
+        String destination = "/queue/nurse/" + nurseMobile;
+
+        LiveAlertPayload alert = LiveAlertPayload.builder()
+                .eventType("EMERGENCY_SOS")
+                .bookingNo(assignment.getBooking().getBookingNo())
+                .title("🚨 EMERGENCY SOS REQUEST")
+                .message("URGENT: Emergency medical assistance needed at " + assignment.getBooking().getRawAddress())
+                .contextualData(assignment.getExpiresAt())
+                .build();
+
+        messagingTemplate.convertAndSend(destination, alert);
+        log.info("Emergency SOS alert sent to nurse: {}", nurseMobile);
+    }
 }

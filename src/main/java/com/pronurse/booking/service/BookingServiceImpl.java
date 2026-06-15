@@ -1,11 +1,15 @@
 package com.pronurse.booking.service;
 
 import com.pronurse.booking.dto.BookingHistoryResponse;
+import com.pronurse.booking.dto.BookingHistoryFilterRequest;
+import com.pronurse.booking.dto.BookWithFavoriteRequest;
 import com.pronurse.booking.dto.CompleteBookingRequest;
 import com.pronurse.booking.dto.CreateBookingRequest;
 import com.pronurse.booking.dto.NurseDashboardResponse;
 import com.pronurse.booking.entity.*;
 import com.pronurse.booking.repository.*;
+import com.pronurse.booking.specification.BookingSpecification;
+import com.pronurse.favorites.repository.FavoriteNurseRepository;
 import com.pronurse.catalog.entity.MedicalService;
 import com.pronurse.catalog.repository.MedicalServiceRepository;
 import com.pronurse.auth.repository.UserRepository;
@@ -23,6 +27,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -56,6 +65,7 @@ public class BookingServiceImpl implements BookingService {
     private final WalletService walletService;
     private final DispatchAlertService alertService;
     private final NurseWalletRepository walletRepository;
+    private final FavoriteNurseRepository favoriteRepository;
 
     @Override
     @Transactional
@@ -394,5 +404,101 @@ public class BookingServiceImpl implements BookingService {
                 .totalAmount(total)
                 .serviceNames(services)
                 .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<BookingHistoryResponse> getFilteredPatientHistory(String patientMobile, BookingHistoryFilterRequest filter) {
+        Specification<Booking> spec = BookingSpecification.buildPatientSpec(patientMobile, filter);
+        
+        Pageable pageable = PageRequest.of(
+                filter.getPage(),
+                filter.getSize(),
+                Sort.by(Sort.Direction.fromString(filter.getSortDirection()), filter.getSortBy())
+        );
+        
+        Page<Booking> bookings = bookingRepository.findAll(spec, pageable);
+        return bookings.map(b -> convertToHistoryItem(b, true));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<BookingHistoryResponse> getFilteredNurseHistory(String nurseMobile, BookingHistoryFilterRequest filter) {
+        Specification<Booking> spec = BookingSpecification.buildNurseSpec(nurseMobile, filter);
+        
+        Pageable pageable = PageRequest.of(
+                filter.getPage(),
+                filter.getSize(),
+                Sort.by(Sort.Direction.fromString(filter.getSortDirection()), filter.getSortBy())
+        );
+        
+        Page<Booking> bookings = bookingRepository.findAll(spec, pageable);
+        return bookings.map(b -> convertToHistoryItem(b, false));
+    }
+    @Override
+    @Transactional
+    public String bookWithFavoriteNurse(String patientMobile, BookWithFavoriteRequest request) {
+        var patient = userRepository.findByMobile(patientMobile)
+                .orElseThrow(() -> new ApplicationException("Patient not found"));
+
+        var favoriteNurse = userRepository.findById(request.getFavoriteNurseUserId())
+                .orElseThrow(() -> new ApplicationException("Favorite nurse not found"));
+
+        // Verify nurse is actually in favorites
+        if (!favoriteRepository.existsByPatientIdAndNurseId(patient.getId(), favoriteNurse.getId())) {
+            throw new ApplicationException("This nurse is not in your favorites");
+        }
+
+        // Verify nurse is available
+        var nurseProfile = nurseProfileRepository.findByUserMobile(favoriteNurse.getMobile())
+                .orElseThrow(() -> new ApplicationException("Nurse profile not found"));
+
+        if (!nurseProfile.isOnDuty()) {
+            throw new ApplicationException("Your favorite nurse is currently off-duty");
+        }
+
+        List<MedicalService> targetServices = serviceRepository.findAllById(request.getSelectedServiceIds());
+
+        String ticketNo = "FAV-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+
+        Booking booking = Booking.builder()
+                .bookingNo(ticketNo)
+                .patientUser(patient)
+                .assignedNurseUser(favoriteNurse) // Direct assignment
+                .bookingStatus("CONFIRMED") // Skip dispatch, directly confirmed
+                .paymentStatus("PENDING")
+                .bookingDate(LocalDate.parse(request.getBookingDate()))
+                .bookingTime(request.getBookingTime())
+                .remarks(request.getRemarks())
+                .latitude(Double.parseDouble(request.getLatitude()))
+                .longitude(Double.parseDouble(request.getLongitude()))
+                .rawAddress(request.getAddress())
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+
+        List<BookingItem> items = targetServices.stream().map(service -> BookingItem.builder()
+                .booking(booking)
+                .service(service)
+                .itemName(service.getName())
+                .priceCharged(service.getBasePrice())
+                .build()
+        ).collect(Collectors.toList());
+
+        booking.setSelectedItems(items);
+        bookingRepository.save(booking);
+
+        // Notify the favorite nurse directly
+        alertService.broadcastNewOfferToNurse(favoriteNurse.getMobile(), 
+            BookingAssignment.builder()
+                .booking(booking)
+                .nurseUser(favoriteNurse)
+                .status("CONFIRMED")
+                .notifiedAt(LocalDateTime.now())
+                .build());
+
+        log.info("Quick booking with favorite nurse created: {} assigned to {}", ticketNo, favoriteNurse.getMobile());
+
+        return ticketNo;
     }
 }

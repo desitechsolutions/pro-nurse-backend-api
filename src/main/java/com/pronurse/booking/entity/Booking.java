@@ -66,6 +66,19 @@ public class Booking {
     @Column(name = "prescription_file_path", length = 255)
     private String prescriptionFilePath;
 
+    // --- Emergency SOS Support ---
+    @Column(name = "is_emergency")
+    private Boolean isEmergency = false;
+
+    @Column(name = "emergency_description", columnDefinition = "TEXT")
+    private String emergencyDescription;
+
+    @Column(name = "emergency_contact_name", length = 100)
+    private String emergencyContactName;
+
+    @Column(name = "emergency_contact_mobile", length = 15)
+    private String emergencyContactMobile;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 

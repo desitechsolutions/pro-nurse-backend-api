@@ -22,4 +22,6 @@ public interface BookingAssignmentRepository extends JpaRepository<BookingAssign
                     "ORDER BY ba.notifiedAt DESC"
     )
     List<com.pronurse.booking.entity.BookingAssignment> findActiveNurseDashboardFeeds(@org.springframework.data.repository.query.Param("mobile") String mobile);
+    
+    List<BookingAssignment> findByBookingIdOrderByNotifiedAtAsc(Long bookingId);
 }

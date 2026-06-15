@@ -4,7 +4,10 @@ import com.pronurse.booking.dto.CreateBookingRequest;
 import com.pronurse.booking.dto.NurseDashboardResponse;
 import com.pronurse.booking.dto.CompleteBookingRequest;
 import com.pronurse.booking.dto.BookingHistoryResponse;
+import com.pronurse.booking.dto.BookingHistoryFilterRequest;
+import com.pronurse.booking.dto.BookWithFavoriteRequest;
 import com.pronurse.booking.entity.Booking;
+import org.springframework.data.domain.Page;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -74,4 +77,19 @@ public interface BookingService {
      * Transitions a booking status to COMPLETED and releases the assigned nurse back into the available pool.
      */
     void completeBookingService(String nurseMobile, CompleteBookingRequest request);
+
+    /**
+     * Get filtered and paginated booking history for a patient
+     */
+    Page<BookingHistoryResponse> getFilteredPatientHistory(String patientMobile, BookingHistoryFilterRequest filter);
+
+    /**
+     * Get filtered and paginated booking history for a nurse
+     */
+    Page<BookingHistoryResponse> getFilteredNurseHistory(String nurseMobile, BookingHistoryFilterRequest filter);
+
+    /**
+     * Quick book with a favorite nurse (direct assignment, no dispatch)
+     */
+    String bookWithFavoriteNurse(String patientMobile, BookWithFavoriteRequest request);
 }

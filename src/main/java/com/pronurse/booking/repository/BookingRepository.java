@@ -4,15 +4,17 @@ import com.pronurse.booking.entity.Booking;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface BookingRepository extends JpaRepository<Booking, Long> {
+public interface BookingRepository extends JpaRepository<Booking, Long>, JpaSpecificationExecutor<Booking> {
     Optional<Booking> findByBookingNo(String bookingNo);
 
     /**
@@ -26,6 +28,16 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
             "ORDER BY (6371 * acos(cos(radians(:lat)) * cos(radians(np.latitude)) * cos(radians(np.longitude) - radians(:lon)) + sin(radians(:lat)) * sin(radians(np.latitude)))) ASC " +
             "LIMIT 1", nativeQuery = true)
     Optional<Long> findNextClosestNurseId(@Param("lat") double lat, @Param("lon") double lon, @Param("bookingId") Long bookingId);
+
+    /**
+     * Find N nearest nurses for emergency dispatch
+     */
+    @Query(value = "SELECT np.user_id FROM nurse_profiles np " +
+            "JOIN users u ON np.user_id = u.id " +
+            "WHERE np.is_verified = true AND np.is_on_duty = true " +
+            "ORDER BY (6371 * acos(cos(radians(:lat)) * cos(radians(np.latitude)) * cos(radians(np.longitude) - radians(:lon)) + sin(radians(:lat)) * sin(radians(np.latitude)))) ASC " +
+            "LIMIT :limit", nativeQuery = true)
+    List<Long> findNearestNurseIds(@Param("lat") double lat, @Param("lon") double lon, @Param("limit") int limit);
 
     List<Booking> findByPatientUserMobileOrderByCreatedAtDesc(String mobile);
 
