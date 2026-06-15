@@ -141,5 +141,3 @@ class WalletServiceTest {
         assertEquals(new BigDecimal("1000.00"), summary.getLifetimeEarnings());
     }
 }
-
-// Made with Bob

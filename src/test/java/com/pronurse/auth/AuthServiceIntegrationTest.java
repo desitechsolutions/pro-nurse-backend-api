@@ -75,5 +75,3 @@ class AuthServiceIntegrationTest {
         assertEquals("NURSE", response.getRole());
     }
 }
-
-// Made with Bob

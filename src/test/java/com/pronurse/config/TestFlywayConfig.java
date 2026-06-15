@@ -13,5 +13,3 @@ public class TestFlywayConfig {
     // No custom beans needed - Spring Boot auto-configuration handles Flyway
     // The application-test.properties file configures Flyway properly
 }
-
-// Made with Bob

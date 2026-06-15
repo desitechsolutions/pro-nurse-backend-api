@@ -140,5 +140,3 @@ class BookingServiceTest {
         assertEquals(1, history.size());
     }
 }
-
-// Made with Bob

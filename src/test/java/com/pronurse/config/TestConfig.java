@@ -25,5 +25,3 @@ public class TestConfig {
         return mock(SimpMessagingTemplate.class);
     }
 }
-
-// Made with Bob
