@@ -1,6 +1,7 @@
 package com.pronurse.patient.service;
 
 import com.pronurse.patient.dto.PatientProfileUpdateRequest;
+import com.pronurse.patient.dto.PatientProfileResponse; // Using clean DTO
 import com.pronurse.auth.entity.User;
 import com.pronurse.auth.repository.UserRepository;
 import com.pronurse.common.exception.ApplicationException;
@@ -54,6 +55,7 @@ public class PatientProfileServiceImpl implements PatientProfileService {
         profile.setDob(request.getDob());
         profile.setBloodGroup(request.getBloodGroup());
         profile.setAddress(request.getAddress());
+
         try {
             if (request.getLatitude() != null && !request.getLatitude().isBlank()) {
                 profile.setLatitude(Double.parseDouble(request.getLatitude()));
@@ -81,8 +83,25 @@ public class PatientProfileServiceImpl implements PatientProfileService {
     }
 
     @Override
-    public PatientProfile getProfileByMobile(String mobile) {
-        return patientProfileRepository.findByUserMobile(mobile)
+    @Transactional(readOnly = true)
+    public PatientProfileResponse getProfileByMobile(String mobile) {
+        PatientProfile profile = patientProfileRepository.findByUserMobile(mobile)
                 .orElseThrow(() -> new ApplicationException("Patient clinical file parameters not initialized yet."));
+
+        // Map raw database attributes securely to the application return layer response
+        return PatientProfileResponse.builder()
+                .id(profile.getId())
+                .patientId(profile.getPatientId())
+                .name(profile.getUser().getName())
+                .mobile(profile.getUser().getMobile())
+                .email(profile.getUser().getEmail())
+                .gender(profile.getGender())
+                .dob(profile.getDob())
+                .bloodGroup(profile.getBloodGroup())
+                .address(profile.getAddress())
+                .profileImage(profile.getProfileImage())
+                .latitude(profile.getLatitude())
+                .longitude(profile.getLongitude())
+                .build();
     }
 }
