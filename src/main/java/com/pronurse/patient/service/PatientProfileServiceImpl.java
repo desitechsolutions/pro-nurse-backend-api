@@ -10,6 +10,7 @@ import com.pronurse.patient.entity.PatientProfile;
 import com.pronurse.patient.repository.PatientProfileRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -37,7 +38,7 @@ public class PatientProfileServiceImpl implements PatientProfileService {
     @Transactional
     public void updateProfile(String mobile, PatientProfileUpdateRequest request, MultipartFile profileImage) {
         User user = userRepository.findByMobile(mobile)
-                .orElseThrow(() -> new ApplicationException("User record connection dropped for identity context: " + mobile));
+                .orElseThrow(() -> new UsernameNotFoundException("User record connection dropped for identity context: " + mobile));
 
         user.setName(request.getName());
         user.setEmail(request.getEmail());
@@ -47,7 +48,6 @@ public class PatientProfileServiceImpl implements PatientProfileService {
                 .orElseGet(() -> {
                     PatientProfile newProfile = new PatientProfile();
                     newProfile.setUser(user);
-                    newProfile.setPatientId(request.getPatientId());
                     return newProfile;
                 });
 
@@ -76,8 +76,6 @@ public class PatientProfileServiceImpl implements PatientProfileService {
                 throw new ApplicationException("Patient image asset upload execution mapping error.");
             }
         }
-
-        profile.setUpdatedAt(LocalDateTime.now());
         patientProfileRepository.save(profile);
         logger.info("Patient demographic details updated securely in database core for mobile: {}", mobile);
     }

@@ -2,8 +2,11 @@ package com.pronurse.nurse.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.pronurse.auth.entity.User;
+import com.pronurse.enums.Gender;
 import jakarta.persistence.*;
 import lombok.*;
+
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Data
@@ -32,10 +35,11 @@ public class NurseProfile {
     private User user;
 
     @Column(length = 20)
-    private String gender;
+    @Enumerated(EnumType.STRING)
+    private Gender gender;
 
     @Column(length = 20)
-    private String dob;
+    private LocalDate dob;
 
     private String address;
     private String qualification;

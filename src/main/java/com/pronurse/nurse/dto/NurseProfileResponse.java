@@ -1,7 +1,10 @@
 package com.pronurse.nurse.dto;
 
+import com.pronurse.enums.Gender;
 import lombok.Builder;
 import lombok.Data;
+
+import java.time.LocalDate;
 
 @Data
 @Builder
@@ -11,8 +14,8 @@ public class NurseProfileResponse {
     private String name;
     private String mobile;
     private String email;
-    private String gender;
-    private String dob;
+    private Gender gender;
+    private LocalDate dob;
     private String qualification;
     private String experience;
     private String specialization;

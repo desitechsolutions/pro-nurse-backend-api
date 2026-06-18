@@ -88,7 +88,7 @@ public class SwaggerConfig {
                                 .url("http://localhost:" + serverPort)
                                 .description("Local Development Server"),
                         new Server()
-                                .url("https://desitechsolutions.com")
+                                .url("https://pronurse-api-0-1-0.onrender.com")
                                 .description("Production Server")
                 ))
                 .addSecurityItem(new SecurityRequirement().addList("Bearer Authentication"))

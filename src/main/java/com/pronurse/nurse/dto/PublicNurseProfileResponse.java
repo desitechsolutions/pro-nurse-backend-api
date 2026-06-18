@@ -1,5 +1,6 @@
 package com.pronurse.nurse.dto;
 
+import com.pronurse.enums.Gender;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Data;
@@ -16,7 +17,7 @@ public class PublicNurseProfileResponse {
     private String name;
 
     @Schema(description = "Gender", example = "Female")
-    private String gender;
+    private Gender gender;
 
     @Schema(description = "Qualification", example = "GNM")
     private String qualification;

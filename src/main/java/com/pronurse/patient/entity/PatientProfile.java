@@ -1,8 +1,11 @@
 package com.pronurse.patient.entity;
 
 import com.pronurse.auth.entity.User;
+import com.pronurse.enums.Gender;
 import jakarta.persistence.*;
 import lombok.*;
+
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -31,10 +34,11 @@ public class PatientProfile {
     private User user;
 
     @Column(length = 20)
-    private String gender;
+    @Enumerated(EnumType.STRING)
+    private Gender gender;
 
     @Column(length = 20)
-    private String dob;
+    private LocalDate dob;
 
     @Column(name = "blood_group", length = 10)
     private String bloodGroup;

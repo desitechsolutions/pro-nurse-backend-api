@@ -1,6 +1,7 @@
 package com.pronurse.nurse.controller;
 
 import com.pronurse.common.payload.ApiResponse;
+import com.pronurse.enums.Gender;
 import com.pronurse.nurse.dto.NurseSearchRequest;
 import com.pronurse.nurse.dto.PublicNurseProfileResponse;
 import com.pronurse.nurse.entity.NurseProfile;
@@ -109,7 +110,7 @@ public class NurseSearchController {
             @Parameter(description = "Patient longitude") @RequestParam(required = false) String longitude,
             @Parameter(description = "Search radius in km") @RequestParam(required = false, defaultValue = "50") Integer radiusKm,
             @Parameter(description = "Language filter") @RequestParam(required = false) String language,
-            @Parameter(description = "Gender filter") @RequestParam(required = false) String gender,
+            @Parameter(description = "Gender filter") @RequestParam(required = false) Gender gender,
             @Parameter(description = "Only on-duty nurses") @RequestParam(required = false, defaultValue = "false") Boolean onDutyOnly,
             @PageableDefault(size = 20) Pageable pageable) {
 
@@ -129,7 +130,7 @@ public class NurseSearchController {
                 .filter(np -> language == null || 
                         (np.getLanguages() != null && np.getLanguages().toLowerCase().contains(language.toLowerCase())))
                 .filter(np -> gender == null || 
-                        (np.getGender() != null && np.getGender().equalsIgnoreCase(gender)))
+                        (np.getGender() != null && np.getGender()==gender))
                 .filter(np -> !onDutyOnly || np.isOnDuty())
                 .map(np -> {
                     Double distance = null;

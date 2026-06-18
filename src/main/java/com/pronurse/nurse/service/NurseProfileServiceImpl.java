@@ -48,7 +48,6 @@ public class NurseProfileServiceImpl implements NurseProfileService {
                 .orElseGet(() -> {
                     NurseProfile newProfile = new NurseProfile();
                     newProfile.setUser(user);
-                    newProfile.setNurseId(request.getNurseId());
                     return newProfile;
                 });
 
