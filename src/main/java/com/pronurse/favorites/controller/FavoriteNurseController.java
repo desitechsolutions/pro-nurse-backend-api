@@ -22,7 +22,7 @@ import java.util.List;
 @RequestMapping("/api/favorites")
 @RequiredArgsConstructor
 @Slf4j
-@Tag(name = "Favorite Nurses", description = "Manage favorite nurses for quick booking")
+@Tag(name = "16. Favorite Nurses", description = "Manage favorite nurses for quick booking")
 @SecurityRequirement(name = "bearerAuth")
 public class FavoriteNurseController {
 

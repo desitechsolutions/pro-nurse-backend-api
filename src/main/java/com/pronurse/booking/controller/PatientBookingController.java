@@ -6,6 +6,7 @@ import com.pronurse.booking.service.BookingService;
 import com.pronurse.catalog.dto.ServiceCatalogResponse;
 import com.pronurse.catalog.service.CatalogService;
 import com.pronurse.common.payload.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +18,10 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api")
+@Tag(
+        name = "06. Patient Booking",
+        description = "Patient booking APIs for service catalog retrieval, booking creation, and history log access"
+)
 @RequiredArgsConstructor
 public class PatientBookingController {
 

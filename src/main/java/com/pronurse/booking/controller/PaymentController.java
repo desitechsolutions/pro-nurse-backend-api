@@ -2,6 +2,7 @@ package com.pronurse.booking.controller;
 
 import com.pronurse.booking.service.BookingService;
 import com.pronurse.common.payload.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -9,6 +10,9 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/payment")
+@Tag(
+        name = "08. Payment Processing",
+        description = "Payment processing APIs for creating Razorpay orders and verifying payments")
 public class PaymentController {
 
     private final BookingService bookingService;

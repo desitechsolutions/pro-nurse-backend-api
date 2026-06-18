@@ -1,5 +1,5 @@
 -- Ensure PostGIS spatial tracking is initialized when migrating onto real PostgreSQL instances
-CREATE EXTENSION IF NOT EXISTS postgis;
+--CREATE EXTENSION IF NOT EXISTS postgis;
 
 -- 1. Master Service / Sub-Service Hierarchy Table
 CREATE TABLE medical_services (

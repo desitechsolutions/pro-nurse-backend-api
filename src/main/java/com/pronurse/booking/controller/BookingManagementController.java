@@ -30,7 +30,7 @@ import java.time.LocalDateTime;
 @RequestMapping("/api/booking")
 @RequiredArgsConstructor
 @Slf4j
-@Tag(name = "Booking Management", description = "Booking cancellation and rescheduling operations")
+@Tag(name = "09. Booking Management", description = "Booking cancellation and rescheduling operations")
 @SecurityRequirement(name = "Bearer Authentication")
 public class BookingManagementController {
 

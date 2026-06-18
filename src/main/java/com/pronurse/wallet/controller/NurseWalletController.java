@@ -3,6 +3,7 @@ package com.pronurse.wallet.controller;
 import com.pronurse.common.payload.ApiResponse;
 import com.pronurse.wallet.dto.NurseWalletSummary;
 import com.pronurse.wallet.service.WalletService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -14,6 +15,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/nurse/wallet")
+@Tag(name = "12. Nurse Wallet Management", description = "Manage nurse wallet balances, earnings, and withdrawal requests")
 @RequiredArgsConstructor
 public class NurseWalletController {
 

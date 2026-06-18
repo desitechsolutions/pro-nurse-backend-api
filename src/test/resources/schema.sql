@@ -243,5 +243,3 @@ CREATE TABLE IF NOT EXISTS notification_preferences (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
-
--- Made with Bob

@@ -4,6 +4,7 @@ import com.pronurse.patient.dto.PatientProfileUpdateRequest;
 import com.pronurse.patient.dto.PatientProfileResponse;
 import com.pronurse.common.payload.ApiResponse;
 import com.pronurse.patient.service.PatientProfileService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -15,6 +16,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/patient/profile")
+@Tag(name = "02. Patient Profile",
+        description = "Patient profile management APIs")
 @RequiredArgsConstructor
 public class PatientProfileController {
 

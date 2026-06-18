@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/notifications")
 @RequiredArgsConstructor
 @Slf4j
-@Tag(name = "Push Notifications", description = "FCM push notification management")
+@Tag(name = "15. Push Notifications", description = "FCM push notification management")
 @SecurityRequirement(name = "bearerAuth")
 public class NotificationController {
 

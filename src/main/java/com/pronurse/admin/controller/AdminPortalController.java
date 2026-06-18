@@ -4,10 +4,11 @@ import com.pronurse.admin.dto.AdminDashboardMetrics;
 import com.pronurse.admin.dto.ReviewModerationRequest;
 import com.pronurse.admin.dto.UpdateServiceRequest;
 import com.pronurse.admin.dto.VerifyNurseRequest;
-import com.pronurse.admin.dto.AdminNurseSummaryResponse;   // Added DTO
-import com.pronurse.admin.dto.AdminBookingSummaryResponse; // Added DTO
+import com.pronurse.admin.dto.AdminNurseSummaryResponse;
+import com.pronurse.admin.dto.AdminBookingSummaryResponse;
 import com.pronurse.admin.service.AdminService;
 import com.pronurse.common.payload.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -20,6 +21,8 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/admin")
+@Tag(name = "13. Admin Portal",
+        description = "Administrative dashboard and management APIs for system oversight, user moderation, and service catalog control")
 @PreAuthorize("hasRole('ADMIN')")
 @RequiredArgsConstructor
 public class AdminPortalController {

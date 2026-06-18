@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/emergency")
 @RequiredArgsConstructor
 @Slf4j
-@Tag(name = "Emergency SOS", description = "Emergency booking and SOS alerts")
+@Tag(name = "11. Emergency SOS", description = "Emergency booking and SOS alerts")
 @SecurityRequirement(name = "bearerAuth")
 public class EmergencySOSController {
 

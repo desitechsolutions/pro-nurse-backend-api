@@ -3,6 +3,7 @@ package com.pronurse.review.controller;
 import com.pronurse.common.payload.ApiResponse;
 import com.pronurse.review.dto.AddReviewRequest;
 import com.pronurse.review.service.ReviewService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/review")
+@Tag(name = "14. Patient Reviews", description = "Submit service feedback reviews post execution tracking")
 @RequiredArgsConstructor
 public class PatientReviewController {
 

@@ -21,7 +21,7 @@ import java.util.Map;
 @RequestMapping("/api/analytics/emergency")
 @RequiredArgsConstructor
 @Slf4j
-@Tag(name = "Emergency Analytics", description = "Emergency response time analytics and statistics")
+@Tag(name = "19. Emergency Analytics", description = "Emergency response time analytics and statistics")
 @SecurityRequirement(name = "bearerAuth")
 public class EmergencyAnalyticsController {
 

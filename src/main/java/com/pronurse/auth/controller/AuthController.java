@@ -29,18 +29,11 @@ import java.time.Duration;
 
 @RestController
 @RequestMapping("/api/auth")
-@Tag(name = "1. Authentication", description = """
+@Tag(name = "01. Authentication", description = """
     Authentication and authorization endpoints for user registration, login, and session management.
     
     **Flow:**
     1. Send OTP → 2. Verify OTP & Get Tokens → 3. Use Access Token → 4. Refresh when expired → 5. Logout
-    
-    **Security:**
-    - OTP-based passwordless authentication
-    - JWT access tokens (10 hours validity)
-    - Refresh tokens with automatic rotation
-    - HttpOnly cookies for refresh tokens
-    - Rate limiting on OTP requests (3 per 5 minutes)
     """)
 public class AuthController {
 

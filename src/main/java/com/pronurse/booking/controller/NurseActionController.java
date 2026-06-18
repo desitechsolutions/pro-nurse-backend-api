@@ -3,6 +3,7 @@ package com.pronurse.booking.controller;
 import com.pronurse.booking.dto.NurseDashboardResponse;
 import com.pronurse.booking.service.BookingService;
 import com.pronurse.common.payload.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -14,6 +15,9 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/booking")
+@Tag(
+        name = "07. Nurse Booking Actions",
+        description = "Nurse booking action APIs for accepting, rejecting, completing bookings and fetching dashboard data")
 @RequiredArgsConstructor
 public class NurseActionController {
 

@@ -4,6 +4,7 @@ import com.pronurse.common.payload.ApiResponse;
 import com.pronurse.nurse.dto.NurseProfileUpdateRequest;
 import com.pronurse.nurse.dto.NurseProfileResponse;
 import com.pronurse.nurse.service.NurseProfileService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -15,6 +16,10 @@ import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/nurse/profile")
+@Tag(
+        name = "03. Nurse Profile",
+        description = "Nurse profile management APIs"
+)
 @RequiredArgsConstructor
 public class NurseProfileController {
 

@@ -26,7 +26,7 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/nurses")
 @RequiredArgsConstructor
 @Slf4j
-@Tag(name = "Nurse Discovery", description = "Public nurse search and discovery for patients")
+@Tag(name = "04. Nurse Discovery", description = "Public nurse search and discovery for patients")
 public class NurseSearchController {
 
     private final NurseProfileRepository nurseProfileRepository;

@@ -30,7 +30,7 @@ import java.nio.file.Paths;
 @RequestMapping("/api/files")
 @RequiredArgsConstructor
 @Slf4j
-@Tag(name = "File Management", description = "File upload and download operations")
+@Tag(name = "17. File Management", description = "File upload and download operations")
 @SecurityRequirement(name = "Bearer Authentication")
 public class FileDownloadController {
 

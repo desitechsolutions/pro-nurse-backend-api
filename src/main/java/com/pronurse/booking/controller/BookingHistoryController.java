@@ -20,7 +20,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/history")
 @RequiredArgsConstructor
-@Tag(name = "Booking History", description = "Booking history and filtering")
+@Tag(name = "10. Booking History", description = "Booking history and filtering")
 public class BookingHistoryController {
 
     private final BookingService bookingService;

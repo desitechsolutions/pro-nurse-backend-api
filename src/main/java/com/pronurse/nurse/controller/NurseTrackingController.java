@@ -7,6 +7,7 @@ import com.pronurse.nurse.dto.LocationUpdateRequest;
 import com.pronurse.nurse.entity.NurseProfile;
 import com.pronurse.nurse.repository.NurseProfileRepository;
 import com.pronurse.nurse.service.NurseProfileService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -21,6 +22,10 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/nurse/location")
+@Tag(
+        name = "05. Nurse Tracking",
+        description = "Nurse tracking APIs"
+)
 @RequiredArgsConstructor
 public class NurseTrackingController {
 
