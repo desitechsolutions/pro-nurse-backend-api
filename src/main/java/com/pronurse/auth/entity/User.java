@@ -1,8 +1,11 @@
 package com.pronurse.auth.entity;
 
 import com.pronurse.auth.model.Role;
+import com.pronurse.nurse.entity.NurseProfile; // Ensure this import is added
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.ToString;
+import lombok.EqualsAndHashCode;
 import java.time.LocalDateTime;
 
 @Entity
@@ -29,6 +32,12 @@ public class User {
 
     private boolean active = true;
     private boolean isMobileVerified = false;
+
+    // --- NEW: Bidirectional link to fetch nurse tracking details dynamically ---
+    @OneToOne(mappedBy = "user", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @ToString.Exclude // Prevents infinite recursion loop during logging
+    @EqualsAndHashCode.Exclude // Prevents infinite recursion loop in Lombok equals checks
+    private NurseProfile nurseProfile;
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

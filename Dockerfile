@@ -1,7 +1,7 @@
 FROM eclipse-temurin:21-jdk-jammy
 
 WORKDIR /app
-ARG JAR_FILE=target/pro-nurse-api-0.1.0.jar
+ARG JAR_FILE=target/pro-nurse-backend-api-0.0.1-SNAPSHOT.jar
 
 COPY ${JAR_FILE} app.jar
 

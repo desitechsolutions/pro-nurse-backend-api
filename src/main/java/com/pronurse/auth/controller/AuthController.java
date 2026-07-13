@@ -9,6 +9,13 @@ import com.pronurse.auth.service.AuthService;
 import com.pronurse.auth.service.RefreshTokenService;
 import com.pronurse.common.exception.ApplicationException;
 import com.pronurse.common.payload.ApiResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,6 +29,12 @@ import java.time.Duration;
 
 @RestController
 @RequestMapping("/api/auth")
+@Tag(name = "01. Authentication", description = """
+    Authentication and authorization endpoints for user registration, login, and session management.
+    
+    **Flow:**
+    1. Send OTP → 2. Verify OTP & Get Tokens → 3. Use Access Token → 4. Refresh when expired → 5. Logout
+    """)
 public class AuthController {
 
     private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
@@ -38,9 +51,72 @@ public class AuthController {
     @Autowired
     private RateLimitingService rateLimitingService;
 
-    /**
-     * Step 1: Send/Initiate OTP workflow for a mobile number
-     */
+    @Operation(
+            summary = "Step 1: Send OTP",
+            description = """
+                Initiates OTP workflow for user registration or login.
+                
+                **Process:**
+                1. Validates mobile number format
+                2. Checks rate limiting (max 3 requests per 5 minutes)
+                3. Generates 6-digit OTP
+                4. Sends OTP via SMS (in production) or logs it (in development)
+                
+                **Rate Limiting:** 3 requests per 5 minutes per mobile number
+                
+                **Test OTP:** For local testing, use OTP: `123456`
+                """,
+            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "Mobile number to send OTP",
+                    required = true,
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = OtpRequest.class),
+                            examples = @ExampleObject(
+                                    name = "Send OTP Example",
+                                    value = """
+                                            {
+                                              "mobile": "9876543210"
+                                            }
+                                            """
+                            )
+                    )
+            )
+    )
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "OTP sent successfully",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "success": true,
+                                              "message": "OTP sent successfully. For local testing use default OTP: 123456",
+                                              "data": null
+                                            }
+                                            """
+                            )
+                    )
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "429",
+                    description = "Rate limit exceeded",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "success": false,
+                                              "message": "Too many requests. Please wait before requesting another OTP.",
+                                              "data": null
+                                            }
+                                            """
+                            )
+                    )
+            )
+    })
     @PostMapping("/otp/send")
     public ResponseEntity<ApiResponse<String>> sendOtp(@Valid @RequestBody OtpRequest request) {
         logger.info("Received OTP generation request for mobile: {}", request.getMobile());
@@ -60,9 +136,106 @@ public class AuthController {
                 null
         ));
     }
-    /**
-     * Step 2: Verify OTP and log in / register the user seamlessly
-     */
+    @Operation(
+            summary = "Step 2: Verify OTP & Authenticate",
+            description = """
+                Verifies OTP and authenticates user. Creates new user if first-time login.
+                
+                **Process:**
+                1. Validates OTP (use `123456` for testing)
+                2. Creates new user if mobile not registered
+                3. Creates role-specific profile (Patient/Nurse)
+                4. Generates JWT access token (10 hours validity)
+                5. Creates refresh token (7 days validity)
+                6. Sets HttpOnly cookie with refresh token
+                7. Clears rate limits on successful verification
+                
+                **Roles:**
+                - `PATIENT`: For patients booking services
+                - `NURSE`: For healthcare providers
+                - `ADMIN`: For platform administrators
+                
+                **Returns:** Access token, role, and refresh token
+                """,
+            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "OTP verification details with user information",
+                    required = true,
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = OtpVerificationRequest.class),
+                            examples = {
+                                    @ExampleObject(
+                                            name = "Patient Registration",
+                                            value = """
+                                                    {
+                                                      "mobile": "9876543210",
+                                                      "otp": "123456",
+                                                      "name": "John Doe",
+                                                      "roleType": "PATIENT"
+                                                    }
+                                                    """
+                                    ),
+                                    @ExampleObject(
+                                            name = "Nurse Registration",
+                                            value = """
+                                                    {
+                                                      "mobile": "9876543211",
+                                                      "otp": "123456",
+                                                      "name": "Jane Smith",
+                                                      "roleType": "NURSE"
+                                                    }
+                                                    """
+                                    ),
+                                    @ExampleObject(
+                                            name = "Existing User Login",
+                                            value = """
+                                                    {
+                                                      "mobile": "9876543210",
+                                                      "otp": "123456",
+                                                      "roleType": "PATIENT"
+                                                    }
+                                                    """
+                                    )
+                            }
+                    )
+            )
+    )
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "Authentication successful",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "success": true,
+                                              "message": "Authentication successful",
+                                              "data": {
+                                                "accessToken": "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiI5ODc2NTQzMjEwIiwibmFtZSI6IkpvaG4gRG9lIiwicm9sZSI6IlBBVElFTlQiLCJpYXQiOjE3MDMwMDAwMDAsImV4cCI6MTcwMzAzNjAwMH0.signature",
+                                                "role": "PATIENT",
+                                                "refreshToken": "550e8400-e29b-41d4-a716-446655440000"
+                                              }
+                                            }
+                                            """
+                            )
+                    )
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "400",
+                    description = "Invalid OTP",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "Invalid OTP token provided."
+                                            }
+                                            """
+                            )
+                    )
+            )
+    })
     @PostMapping("/otp/verify")
     public ResponseEntity<ApiResponse<AuthResponse>> verifyAndAuthenticate(@Valid @RequestBody OtpVerificationRequest request) {
         logger.info("Processing OTP verification for mobile: {}", request.getMobile());

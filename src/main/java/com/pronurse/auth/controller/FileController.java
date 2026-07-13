@@ -1,6 +1,7 @@
 package com.pronurse.auth.controller;
 
 import com.pronurse.common.payload.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -19,6 +20,7 @@ import java.nio.file.Paths;
 
 @RestController
 @RequestMapping("/api/files")
+@Tag(name = "18. File Management", description = "Secure file download operations for authorized users")
 public class FileController {
 
     private static final Logger logger = LoggerFactory.getLogger(FileController.class);

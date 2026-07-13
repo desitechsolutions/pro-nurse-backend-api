@@ -6,7 +6,7 @@ import org.springframework.stereotype.Service;
 
 @Slf4j
 @Service
-@Profile("local") // Active only when spring.profiles.active=local
+@Profile({"local", "test"}) // Active for local development and testing
 public class MockSmsSenderImpl implements SmsSender {
 
     @Override

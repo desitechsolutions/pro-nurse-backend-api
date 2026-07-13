@@ -1,6 +1,7 @@
 package com.pronurse.nurse.service;
 
 import com.pronurse.nurse.dto.NurseProfileUpdateRequest;
+import com.pronurse.nurse.dto.NurseProfileResponse;
 import com.pronurse.auth.entity.User;
 import com.pronurse.auth.repository.UserRepository;
 import com.pronurse.common.exception.ApplicationException;
@@ -39,19 +40,17 @@ public class NurseProfileServiceImpl implements NurseProfileService {
         User user = userRepository.findByMobile(mobile)
                 .orElseThrow(() -> new ApplicationException("User not found with mobile: " + mobile));
 
-        // Update core User entity display name alongside domain profile record
         user.setName(request.getName());
+        user.setEmail(request.getEmail());
         userRepository.save(user);
 
         NurseProfile profile = nurseProfileRepository.findByUserMobile(mobile)
                 .orElseGet(() -> {
                     NurseProfile newProfile = new NurseProfile();
                     newProfile.setUser(user);
-                    newProfile.setNurseId(request.getNurseId());
                     return newProfile;
                 });
 
-        // Map request payload data directly to entity fields
         profile.setGender(request.getGender());
         profile.setDob(request.getDob());
         profile.setAddress(request.getAddress());
@@ -60,7 +59,6 @@ public class NurseProfileServiceImpl implements NurseProfileService {
         profile.setSpecialization(request.getSpecialization());
         profile.setLanguages(request.getLanguages());
 
-        // Safe coordinates parsing
         try {
             if (request.getLatitude() != null && !request.getLatitude().isBlank()) {
                 profile.setLatitude(Double.parseDouble(request.getLatitude()));
@@ -72,7 +70,6 @@ public class NurseProfileServiceImpl implements NurseProfileService {
             logger.warn("Invalid geographical coordinates payload provided for nurse registration mapping.");
         }
 
-        // Process profile attachment file stream if present
         if (profileImage != null && !profileImage.isEmpty()) {
             try {
                 String savedFileName = fileStorageUtil.storeFile(profileImage, "profiles/nurses", user.getId());
@@ -89,16 +86,37 @@ public class NurseProfileServiceImpl implements NurseProfileService {
     }
 
     @Override
-    public NurseProfile getProfileByMobile(String mobile) {
-        return nurseProfileRepository.findByUserMobile(mobile)
+    @Transactional(readOnly = true)
+    public NurseProfileResponse getProfileByMobile(String mobile) {
+        NurseProfile profile = nurseProfileRepository.findByUserMobile(mobile)
                 .orElseThrow(() -> new ApplicationException("Nurse profile record could not be located."));
+
+        return NurseProfileResponse.builder()
+                .id(profile.getId())
+                .nurseId(profile.getNurseId())
+                .name(profile.getUser().getName())
+                .mobile(profile.getUser().getMobile())
+                .email(profile.getUser().getEmail())
+                .gender(profile.getGender())
+                .dob(profile.getDob())
+                .qualification(profile.getQualification())
+                .experience(profile.getExperience())
+                .specialization(profile.getSpecialization())
+                .languages(profile.getLanguages())
+                .address(profile.getAddress())
+                .profileImage(profile.getProfileImage())
+                .averageRating(profile.getAverageRating())
+                .isOnDuty(profile.isOnDuty())
+                .verificationStatus(profile.getVerificationStatus())
+                .build();
     }
 
+    @Override
+    @Transactional(readOnly = true)
     public Object getAdminProfileByMobile(String mobile) {
         User user = userRepository.findByMobile(mobile)
-                .orElseThrow(() -> new RuntimeException("Admin account record missing"));
+                .orElseThrow(() -> new ApplicationException("Admin account record missing"));
 
-        // Map data to a clean response map or an AdminProfileResponse DTO
         return Map.of(
                 "id", user.getId(),
                 "name", user.getName() != null ? user.getName() : "System Administrator",
@@ -108,5 +126,23 @@ public class NurseProfileServiceImpl implements NurseProfileService {
                 "isActive", user.isActive(),
                 "createdAt", user.getCreatedAt()
         );
+    }
+
+    @Override
+    @Transactional
+    public void updateLiveCoordinates(String mobile, String latitude, String longitude) {
+        NurseProfile nurseProfile = nurseProfileRepository.findByUserMobile(mobile)
+                .orElseThrow(() -> new ApplicationException("Practitioner profile record missing for: " + mobile));
+
+        try {
+            nurseProfile.setLatitude(Double.parseDouble(latitude));
+            nurseProfile.setLongitude(Double.parseDouble(longitude));
+            nurseProfile.setUpdatedAt(LocalDateTime.now());
+            nurseProfileRepository.save(nurseProfile);
+            logger.debug("Live tracking updated for nurse: {} | Lat: {}, Lon: {}", mobile, latitude, longitude);
+        } catch (NumberFormatException e) {
+            logger.error("Malformatted spatial GPS telemetry points intercepted for nurse mobile: {}", mobile);
+            throw new ApplicationException("Invalid coordinate data format.");
+        }
     }
 }
