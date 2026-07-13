@@ -39,15 +39,19 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .csrf(AbstractHttpConfigurer::disable) // Modern Spring style lambda reference
+                .csrf(AbstractHttpConfigurer::disable)
+                .headers(headers -> headers
+                        .frameOptions(frameOptions -> frameOptions.sameOrigin())
+                )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
-                                "/api/auth/otp/**",         // Public OTP handshake operations
-                                "/v3/api-docs/**",          // OpenAPI metadata JSON path
-                                "/swagger-ui/**",           // Swagger UI browser asset endpoints
-                                "/swagger-ui.html"          // Main Swagger landing redirect
+                                "/api/auth/otp/**",
+                                "/v3/api-docs/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/h2-console/**"
                         ).permitAll()
-                        .anyRequest().authenticated()       // Locks down all patient/nurse/admin profile routes
+                        .anyRequest().authenticated()
                 )
                 .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

@@ -1,0 +1,6 @@
+ALTER TABLE nurse_profiles
+ALTER COLUMN dob TYPE DATE
+USING CASE
+    WHEN dob IS NULL OR TRIM(dob) = '' THEN NULL
+    ELSE dob::DATE
+END;

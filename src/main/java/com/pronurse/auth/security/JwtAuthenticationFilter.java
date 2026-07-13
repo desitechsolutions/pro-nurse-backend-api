@@ -36,7 +36,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String mobile = null;
         String jwt = null;
         String role = null;
-
         try {
             // 1. Intercept Authorization Header and validate format
             if (authHeader != null && authHeader.startsWith("Bearer ")) {
