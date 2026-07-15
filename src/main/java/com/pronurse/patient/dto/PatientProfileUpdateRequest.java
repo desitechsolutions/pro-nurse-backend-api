@@ -22,4 +22,5 @@ public class PatientProfileUpdateRequest {
     private String address;
     private String latitude;
     private String longitude;
+    private String chronicDiseases;
 }

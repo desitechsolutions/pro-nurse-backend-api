@@ -12,12 +12,11 @@ public class UpdateServiceRequest {
 
     private String description;
 
-    @NotNull(message = "Base price formulation configuration required")
     private BigDecimal basePrice;
-
-    @NotNull(message = "Estimated processing duration window required")
     private Integer estimatedDurationMinutes;
 
     @NotNull(message = "Active operational availability status field required")
     private Boolean isActive;
+
+    private Long parentServiceId;
 }

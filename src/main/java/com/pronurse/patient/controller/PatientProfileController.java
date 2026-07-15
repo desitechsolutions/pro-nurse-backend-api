@@ -31,10 +31,11 @@ public class PatientProfileController {
     public ResponseEntity<ApiResponse<Void>> syncPatientProfile(
             @Valid @RequestPart("data") PatientProfileUpdateRequest request,
             @RequestPart(value = "profileImage", required = false) MultipartFile profileImage,
+            @RequestPart(value = "medicalReport", required = false) MultipartFile medicalReport,
             Authentication authentication) {
 
         String mobile = (String) authentication.getPrincipal();
-        patientProfileService.updateProfile(mobile, request, profileImage);
+        patientProfileService.updateProfile(mobile, request, profileImage, medicalReport);
         return ResponseEntity.ok(new ApiResponse<>(true, "Patient profile records updated successfully", null));
     }
 

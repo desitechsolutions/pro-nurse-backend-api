@@ -58,6 +58,9 @@ public class NurseProfileServiceImpl implements NurseProfileService {
         profile.setExperience(request.getExperience());
         profile.setSpecialization(request.getSpecialization());
         profile.setLanguages(request.getLanguages());
+        profile.setRegistrationNumber(request.getRegistrationNumber());
+        profile.setCity(request.getCity());
+        profile.setConsultationFee(request.getConsultationFee() != null ? request.getConsultationFee() : java.math.BigDecimal.ZERO);
 
         try {
             if (request.getLatitude() != null && !request.getLatitude().isBlank()) {
@@ -105,9 +108,12 @@ public class NurseProfileServiceImpl implements NurseProfileService {
                 .languages(profile.getLanguages())
                 .address(profile.getAddress())
                 .profileImage(profile.getProfileImage())
+                .registrationNumber(profile.getRegistrationNumber())
                 .averageRating(profile.getAverageRating())
                 .isOnDuty(profile.isOnDuty())
                 .verificationStatus(profile.getVerificationStatus())
+                .city(profile.getCity())
+                .consultationFee(profile.getConsultationFee())
                 .build();
     }
 

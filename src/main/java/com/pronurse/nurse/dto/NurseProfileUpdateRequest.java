@@ -25,4 +25,7 @@ public class NurseProfileUpdateRequest {
     private String address;
     private String latitude;
     private String longitude;
+    private String registrationNumber;
+    private String city;
+    private java.math.BigDecimal consultationFee;
 }

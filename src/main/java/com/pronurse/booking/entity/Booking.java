@@ -52,6 +52,15 @@ public class Booking {
     @Column(name = "raw_address", nullable = false)
     private String rawAddress;
 
+    @Column(name = "notes", columnDefinition = "TEXT")
+    private String notes;
+
+    @Column(name = "has_injection")
+    private Boolean hasInjection = false;
+
+    @Column(name = "payment_mode", length = 50)
+    private String paymentMode;
+
     // --- Razorpay Digital Payment Gateway Integration Traces ---
     @Column(name = "razorpay_order_id", length = 100)
     private String razorpayOrderId;
@@ -88,4 +97,15 @@ public class Booking {
     @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     @Builder.Default
     private List<BookingItem> selectedItems = new ArrayList<>();
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }
