@@ -66,6 +66,7 @@ public class BookingServiceImpl implements BookingService {
     private final DispatchAlertService alertService;
     private final NurseWalletRepository walletRepository;
     private final FavoriteNurseRepository favoriteRepository;
+    private final RazorpayClientProvider razorpayClientProvider;
 
     @Override
     @Transactional
@@ -77,6 +78,15 @@ public class BookingServiceImpl implements BookingService {
 
         String ticketNo = "BOOK-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
 
+        Double parsedLat = null;
+        Double parsedLon = null;
+        if (request.getLatitude() != null && !request.getLatitude().isBlank()) {
+            try { parsedLat = Double.parseDouble(request.getLatitude()); } catch (Exception ignored) {}
+        }
+        if (request.getLongitude() != null && !request.getLongitude().isBlank()) {
+            try { parsedLon = Double.parseDouble(request.getLongitude()); } catch (Exception ignored) {}
+        }
+
         Booking booking = Booking.builder()
                 .bookingNo(ticketNo)
                 .patientUser(patient)
@@ -85,8 +95,11 @@ public class BookingServiceImpl implements BookingService {
                 .bookingDate(LocalDate.parse(request.getBookingDate()))
                 .bookingTime(request.getBookingTime())
                 .remarks(request.getRemarks())
-                .latitude(Double.parseDouble(request.getLatitude()))
-                .longitude(Double.parseDouble(request.getLongitude()))
+                .notes(request.getNotes())
+                .hasInjection(request.getHasInjection() != null ? request.getHasInjection() : false)
+                .paymentMode(request.getPaymentMode())
+                .latitude(parsedLat)
+                .longitude(parsedLon)
                 .rawAddress(request.getAddress())
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
@@ -150,7 +163,7 @@ public class BookingServiceImpl implements BookingService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         try {
-            RazorpayClient razorpay = new RazorpayClient(razorpayKey, razorpaySecret);
+            RazorpayClient razorpay = razorpayClientProvider.getClient(razorpayKey, razorpaySecret);
 
             JSONObject orderRequest = new JSONObject();
             orderRequest.put("amount", total.multiply(new BigDecimal(100))); // Razorpay expects amount in paise
@@ -239,14 +252,19 @@ public class BookingServiceImpl implements BookingService {
     @Override
     @Transactional
     public void processNurseResponse(String bookingNo, String mobile, boolean accept, String reason) {
+        Booking booking = bookingRepository.findByBookingNoForUpdate(bookingNo)
+                .orElseThrow(() -> new ApplicationException("No active offering reference located for selection parameters."));
+
+        if (!"PENDING".equalsIgnoreCase(booking.getBookingStatus())) {
+            throw new ApplicationException("Action deadline expired. Request already processed.");
+        }
+
         BookingAssignment assignment = assignmentRepository.findByBookingBookingNoAndNurseUserMobile(bookingNo, mobile)
                 .orElseThrow(() -> new ApplicationException("No active offering reference located for selection parameters."));
 
         if (!"RINGING".equals(assignment.getStatus())) {
             throw new ApplicationException("Action deadline expired. Request already processed.");
         }
-
-        Booking booking = assignment.getBooking();
 
         if (accept) {
             assignment.setStatus("ACCEPTED");
@@ -396,8 +414,8 @@ public class BookingServiceImpl implements BookingService {
                 .address(b.getRawAddress())
                 .remarks(b.getRemarks())
                 .prescriptionUrl(b.getPrescriptionFilePath())
-                .CounterpartyName(counterpartyName)
-                .CounterpartyMobile(counterpartyMobile)
+                .counterpartyName(counterpartyName)
+                .counterpartyMobile(counterpartyMobile)
                 .nurseLatitude(liveLat)
                 .nurseLongitude(liveLon)
 

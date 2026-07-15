@@ -46,6 +46,18 @@ public class PublicNurseProfileResponse {
     @Schema(description = "Distance from search location in km", example = "2.5")
     private Double distanceKm;
 
+    @Schema(description = "User unique identifier (numeric)", example = "12")
+    private Long id;
+
+    @Schema(description = "Distance in text format compatible with Flutter model", example = "2.5 km")
+    private String distance;
+
+    @Schema(description = "Estimated arrival time", example = "10 mins")
+    private String time;
+
+    @Schema(description = "Rating compatible with Flutter model", example = "4.5")
+    private Double rating;
+
     @Schema(description = "Verification status", example = "Approved")
     private String verificationStatus;
 }

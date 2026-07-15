@@ -52,6 +52,50 @@ public class AuthController {
     private RateLimitingService rateLimitingService;
 
     @Operation(
+            summary = "Register user with password",
+            description = "Creates a new User and provisions a corresponding role-based Patient or Nurse profile using password-based credentials.",
+            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "Password registration attributes compatible with Flutter registration request payload",
+                    required = true,
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = PasswordRegisterRequest.class)
+                    )
+            )
+    )
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "User registration succeeded",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "success": true,
+                                              "message": "User registered successfully",
+                                              "data": null
+                                            }
+                                            """
+                            )
+                    )
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "400",
+                    description = "Validation failure or duplicate user registration request",
+                    content = @Content(
+                            mediaType = "application/json"
+                    )
+            )
+    })
+    @PostMapping("/register")
+    public ResponseEntity<ApiResponse<Void>> register(@Valid @RequestBody PasswordRegisterRequest request) {
+        logger.info("Registering user with password for mobile reference: {}", request.getMobile());
+        authService.registerWithPassword(request);
+        return ResponseEntity.ok(new ApiResponse<>(true, "User registered successfully", null));
+    }
+
+    @Operation(
             summary = "Step 1: Send OTP",
             description = """
                 Initiates OTP workflow for user registration or login.

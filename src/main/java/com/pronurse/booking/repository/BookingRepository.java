@@ -17,6 +17,10 @@ import java.util.Optional;
 public interface BookingRepository extends JpaRepository<Booking, Long>, JpaSpecificationExecutor<Booking> {
     Optional<Booking> findByBookingNo(String bookingNo);
 
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @org.springframework.data.jpa.repository.Query("SELECT b FROM Booking b WHERE b.bookingNo = :bookingNo")
+    Optional<Booking> findByBookingNoForUpdate(@Param("bookingNo") String bookingNo);
+
     /**
      * Native spatial query fallback matching the closest on-duty available nurse
      * while completely excluding anyone who has already rejected or timed out.
@@ -39,10 +43,11 @@ public interface BookingRepository extends JpaRepository<Booking, Long>, JpaSpec
             "LIMIT :limit", nativeQuery = true)
     List<Long> findNearestNurseIds(@Param("lat") double lat, @Param("lon") double lon, @Param("limit") int limit);
 
-    List<Booking> findByPatientUserMobileOrderByCreatedAtDesc(String mobile);
+    @Query("SELECT b FROM Booking b LEFT JOIN FETCH b.patientUser LEFT JOIN FETCH b.assignedNurseUser LEFT JOIN FETCH b.selectedItems WHERE b.patientUser.mobile = :mobile ORDER BY b.createdAt DESC")
+    List<Booking> findByPatientUserMobileOrderByCreatedAtDesc(@Param("mobile") String mobile);
 
+    @Query("SELECT b FROM Booking b LEFT JOIN FETCH b.patientUser LEFT JOIN FETCH b.assignedNurseUser LEFT JOIN FETCH b.selectedItems WHERE b.assignedNurseUser.mobile = :mobile ORDER BY b.createdAt DESC")
+    List<Booking> findByAssignedNurseUserMobileOrderByCreatedAtDesc(@Param("mobile") String mobile);
 
-    List<Booking> findByAssignedNurseUserMobileOrderByCreatedAtDesc(String mobile);
     Page<Booking> findByBookingStatus(String bookingStatus, Pageable pageable);
-
 }

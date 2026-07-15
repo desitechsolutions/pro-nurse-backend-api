@@ -22,7 +22,10 @@ public class NurseProfileResponse {
     private String languages;
     private String address;
     private String profileImage;
+    private String registrationNumber;
     private double averageRating;
     private boolean isOnDuty;
     private String verificationStatus;
+    private String city;
+    private java.math.BigDecimal consultationFee;
 }

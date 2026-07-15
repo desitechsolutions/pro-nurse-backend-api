@@ -61,6 +61,10 @@ public class AdminServiceImpl implements AdminService {
         long activeLiveCount = analyticsRepository.countLiveActiveBookings();
         BigDecimal revenueTotal = analyticsRepository.calculateGrossRevenue();
 
+        if (revenueTotal == null) {
+            revenueTotal = BigDecimal.ZERO;
+        }
+
         return AdminDashboardMetrics.builder()
                 .totalPatientsCount(generalPatientsCount)
                 .totalNursesCount(generalNursesCount)
@@ -159,13 +163,36 @@ public class AdminServiceImpl implements AdminService {
     @Override
     @Transactional
     public void createOrUpdateMedicalService(Long serviceId, UpdateServiceRequest request) {
+
         MedicalService targetNode;
 
         if (serviceId != null && serviceId > 0) {
             targetNode = medicalServiceRepository.findById(serviceId)
-                    .orElseThrow(() -> new ApplicationException("Target healthcare catalog service item not located for ID: " + serviceId));
+                    .orElseThrow(() -> new ApplicationException(
+                            "Target healthcare catalog service item not located for ID: " + serviceId));
+
+            // Prevent self-parenting
+            if (request.getParentServiceId() != null &&
+                    serviceId.equals(request.getParentServiceId())) {
+                throw new ApplicationException("Service cannot be assigned as its own parent.");
+            }
+
         } else {
             targetNode = new MedicalService();
+        }
+
+        boolean isSubService = request.getParentServiceId() != null;
+
+        // Sub-services must have pricing and duration
+        if (isSubService) {
+
+            if (request.getBasePrice() == null) {
+                throw new ApplicationException("Sub-service price is required.");
+            }
+
+            if (request.getEstimatedDurationMinutes() == null) {
+                throw new ApplicationException("Sub-service duration is required.");
+            }
         }
 
         targetNode.setName(request.getName());
@@ -174,21 +201,52 @@ public class AdminServiceImpl implements AdminService {
         targetNode.setEstimatedDurationMinutes(request.getEstimatedDurationMinutes());
         targetNode.setIsActive(request.getIsActive());
 
+        // Parent Service Mapping
+        if (isSubService) {
+            MedicalService parentService = medicalServiceRepository.findById(request.getParentServiceId())
+                    .orElseThrow(() -> new ApplicationException(
+                            "Parent service not found for ID: " + request.getParentServiceId()));
+
+            targetNode.setParentService(parentService);
+        } else {
+            targetNode.setParentService(null);
+        }
+
         medicalServiceRepository.save(targetNode);
-        log.info("Medical catalog modification executed successfully for item: [{}]", request.getName());
+
+        log.info(
+                "Medical catalog modification executed successfully. Service: [{}], Parent Service ID: [{}]",
+                request.getName(),
+                request.getParentServiceId()
+        );
     }
 
     @Override
     @Transactional
     public void moderatePatientReview(ReviewModerationRequest request) {
+
         var targetedReview = reviewRepository.findById(request.getReviewId())
-                .orElseThrow(() -> new ApplicationException("Target feedback post entry index not found for ID: " + request.getReviewId()));
+                .orElseThrow(() -> new ApplicationException(
+                        "Target feedback post entry index not found for ID: " + request.getReviewId()));
 
         if ("DELETE".equalsIgnoreCase(request.getAction())) {
+
             reviewRepository.delete(targetedReview);
-            log.warn("Admin hard-purged review post index [{}] from database cluster records.", request.getReviewId());
+
+            log.warn(
+                    "Admin hard-purged review post index [{}] from database cluster records.",
+                    request.getReviewId());
+
+        } else if ("APPROVE".equalsIgnoreCase(request.getAction())) {
+
+            log.info(
+                    "Admin approved review comment block [{}] successfully.",
+                    request.getReviewId());
+
         } else {
-            log.info("Admin cleared and whitelisted evaluation review comment block [{}] successfully.", request.getReviewId());
+
+            throw new ApplicationException(
+                    "Invalid moderation action. Allowed values are APPROVE or DELETE.");
         }
     }
 
@@ -201,5 +259,21 @@ public class AdminServiceImpl implements AdminService {
         individualUser.setActive(enableAccount);
         userRepository.save(individualUser);
         log.info("Administrative security profile alteration: Set account active flag to [{}] for user: {}", enableAccount, individualUser.getMobile());
+    }
+
+    @Override
+    @Transactional
+    public void deleteMedicalService(Long serviceId) {
+
+        MedicalService service = medicalServiceRepository.findById(serviceId)
+                .orElseThrow(() -> new ApplicationException(
+                        "Medical service not found."));
+
+        if (!service.getSubServices().isEmpty()) {
+            throw new ApplicationException(
+                    "Cannot delete service having sub-services.");
+        }
+
+        medicalServiceRepository.delete(service);
     }
 }

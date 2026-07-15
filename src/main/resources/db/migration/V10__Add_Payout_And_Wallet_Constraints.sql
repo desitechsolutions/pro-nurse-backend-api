@@ -11,7 +11,8 @@ CREATE TABLE payout_requests (
 
 -- 2. Add support columns for Debt Enforcement to existing nurse_wallets table
 ALTER TABLE nurse_wallets
-    ADD COLUMN IF NOT EXISTS negative_limit DECIMAL(19, 2) DEFAULT 500.00 NOT NULL,
+    ADD COLUMN IF NOT EXISTS negative_limit DECIMAL(19, 2) DEFAULT 500.00 NOT NULL;
+ALTER TABLE nurse_wallets
     ADD COLUMN IF NOT EXISTS is_suspended BOOLEAN DEFAULT FALSE NOT NULL;
 
 -- 3. Optimization: Add Index for wallet lookup by mobile (already linked to User)
