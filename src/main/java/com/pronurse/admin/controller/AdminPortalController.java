@@ -7,6 +7,8 @@ import com.pronurse.admin.dto.VerifyNurseRequest;
 import com.pronurse.admin.dto.AdminNurseSummaryResponse;
 import com.pronurse.admin.dto.AdminBookingSummaryResponse;
 import com.pronurse.admin.service.AdminService;
+import com.pronurse.catalog.dto.ServiceCatalogResponse;
+import com.pronurse.catalog.service.CatalogService;
 import com.pronurse.common.payload.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -19,6 +21,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/admin")
 @Tag(name = "13. Admin Portal",
@@ -28,6 +32,7 @@ import org.springframework.web.bind.annotation.*;
 public class AdminPortalController {
 
     private final AdminService adminService;
+    private final CatalogService catalogService;
 
     /**
      * Web Dashboard Profile Hook: Pull administrative user details for session persistence views
@@ -122,5 +127,32 @@ public class AdminPortalController {
 
         adminService.toggleUserAccountStatus(userId, enableAccount);
         return ResponseEntity.ok(new ApiResponse<>(true, "User authorization state updated cleanly.", null));
+    }
+
+    @GetMapping("/services/tree")
+    public ResponseEntity<ApiResponse<List<ServiceCatalogResponse>>> getServiceHierarchy() {
+
+        return ResponseEntity.ok(
+                new ApiResponse<>(
+                        true,
+                        "Medical service hierarchy fetched successfully.",
+                        catalogService.getActiveHierarchyTree()
+                )
+        );
+    }
+
+    @DeleteMapping("/services/{serviceId}")
+    public ResponseEntity<ApiResponse<Void>> deleteService(
+            @PathVariable Long serviceId) {
+
+        adminService.deleteMedicalService(serviceId);
+
+        return ResponseEntity.ok(
+                new ApiResponse<>(
+                        true,
+                        "Medical service deleted successfully.",
+                        null
+                )
+        );
     }
 }

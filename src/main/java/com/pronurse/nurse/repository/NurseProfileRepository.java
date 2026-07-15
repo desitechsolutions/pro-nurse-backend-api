@@ -15,6 +15,36 @@ public interface NurseProfileRepository extends JpaRepository<NurseProfile, Long
     Optional<NurseProfile> findByUserMobile(String mobile);
     Optional<NurseProfile> findByNurseId(String nurseId);
 
+    @Query("SELECT np FROM NurseProfile np JOIN FETCH np.user u " +
+           "WHERE np.isVerified = true AND np.verificationStatus = 'Approved' " +
+           "AND (:specialization IS NULL OR LOWER(np.specialization) LIKE LOWER(CONCAT('%', :specialization, '%'))) " +
+           "AND (:minRating IS NULL OR np.averageRating >= :minRating) " +
+           "AND (:language IS NULL OR LOWER(np.languages) LIKE LOWER(CONCAT('%', :language, '%'))) " +
+           "AND (:gender IS NULL OR np.gender = :gender) " +
+           "AND (:onDutyOnly = false OR np.isOnDuty = true)")
+    List<NurseProfile> searchNursesRaw(
+            @Param("specialization") String specialization,
+            @Param("minRating") Double minRating,
+            @Param("language") String language,
+            @Param("gender") com.pronurse.enums.Gender gender,
+            @Param("onDutyOnly") boolean onDutyOnly
+    );
+
+    @Query("SELECT np FROM NurseProfile np JOIN FETCH np.user u " +
+           "WHERE np.isVerified = true AND np.verificationStatus = 'Approved' " +
+           "AND (:city IS NULL OR LOWER(np.city) = LOWER(:city)) " +
+           "AND (:gender IS NULL OR np.gender = :gender) " +
+           "AND (:rating IS NULL OR np.averageRating >= :rating) " +
+           "AND (:keyword IS NULL OR LOWER(u.name) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+           "    OR LOWER(np.specialization) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+           "    OR LOWER(np.qualification) LIKE LOWER(CONCAT('%', :keyword, '%')))")
+    List<NurseProfile> searchNursesMobile(
+            @Param("keyword") String keyword,
+            @Param("city") String city,
+            @Param("gender") com.pronurse.enums.Gender gender,
+            @Param("rating") Double rating
+    );
+
     @org.springframework.data.jpa.repository.Modifying
     @org.springframework.data.jpa.repository.Query(
             "UPDATE NurseProfile np SET np.isOnDuty = :isOnDuty, np.updatedAt = CURRENT_TIMESTAMP WHERE np.user.id = :userId"

@@ -8,6 +8,7 @@ import lombok.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 
 @Data
 @Entity
@@ -57,6 +58,12 @@ public class NurseProfile {
 
     @Column(unique = true, length = 100)
     private String registrationNumber;
+
+    private String city;
+
+    @Column(name = "consultation_fee")
+    @Builder.Default
+    private BigDecimal consultationFee = BigDecimal.ZERO;
 
     private boolean isVerified = false;
     private boolean isOnDuty = false;

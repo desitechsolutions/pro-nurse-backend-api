@@ -17,4 +17,5 @@ public interface AdminService {
     void moderatePatientReview(com.pronurse.admin.dto.ReviewModerationRequest request);
     void toggleUserAccountStatus(Long userId, boolean enableAccount);
     Object getAdminProfileDetails(String mobile);
+    void deleteMedicalService(Long serviceId);
 }

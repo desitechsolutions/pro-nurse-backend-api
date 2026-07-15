@@ -19,6 +19,8 @@ public class PatientProfileResponse {
     private String bloodGroup;
     private String address;
     private String profileImage;
+    private String medicalReport;
     private Double latitude;
     private Double longitude;
+    private String chronicDiseases;
 }

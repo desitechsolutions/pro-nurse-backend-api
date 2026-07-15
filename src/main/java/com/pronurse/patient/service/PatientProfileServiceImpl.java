@@ -36,7 +36,7 @@ public class PatientProfileServiceImpl implements PatientProfileService {
 
     @Override
     @Transactional
-    public void updateProfile(String mobile, PatientProfileUpdateRequest request, MultipartFile profileImage) {
+    public void updateProfile(String mobile, PatientProfileUpdateRequest request, MultipartFile profileImage, MultipartFile medicalReport) {
         User user = userRepository.findByMobile(mobile)
                 .orElseThrow(() -> new UsernameNotFoundException("User record connection dropped for identity context: " + mobile));
 
@@ -55,6 +55,7 @@ public class PatientProfileServiceImpl implements PatientProfileService {
         profile.setDob(request.getDob());
         profile.setBloodGroup(request.getBloodGroup());
         profile.setAddress(request.getAddress());
+        profile.setChronicDiseases(request.getChronicDiseases());
 
         try {
             if (request.getLatitude() != null && !request.getLatitude().isBlank()) {
@@ -76,6 +77,17 @@ public class PatientProfileServiceImpl implements PatientProfileService {
                 throw new ApplicationException("Patient image asset upload execution mapping error.");
             }
         }
+
+        if (medicalReport != null && !medicalReport.isEmpty()) {
+            try {
+                String savedFileName = fileStorageUtil.storeFile(medicalReport, "prescriptions/patients", user.getId());
+                profile.setMedicalReportPath(savedFileName);
+            } catch (Exception e) {
+                logger.error("Failed to commit uploaded patient medical report to disk.", e);
+                throw new ApplicationException("Patient medical report asset upload execution mapping error.");
+            }
+        }
+
         patientProfileRepository.save(profile);
         logger.info("Patient demographic details updated securely in database core for mobile: {}", mobile);
     }
@@ -98,8 +110,10 @@ public class PatientProfileServiceImpl implements PatientProfileService {
                 .bloodGroup(profile.getBloodGroup())
                 .address(profile.getAddress())
                 .profileImage(profile.getProfileImage())
+                .medicalReport(profile.getMedicalReportPath())
                 .latitude(profile.getLatitude())
                 .longitude(profile.getLongitude())
+                .chronicDiseases(profile.getChronicDiseases())
                 .build();
     }
 }

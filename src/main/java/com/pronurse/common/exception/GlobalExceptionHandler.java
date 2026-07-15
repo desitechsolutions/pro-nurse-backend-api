@@ -84,8 +84,9 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(ApplicationException.class)
-    public ResponseEntity<Map<String, String>> handleApplicationException(ApplicationException ex) {
-        Map<String, String> error = new HashMap<>();
+    public ResponseEntity<Map<String, Object>> handleApplicationException(ApplicationException ex) {
+        Map<String, Object> error = new HashMap<>();
+        error.put("success", false);
         error.put("message", ex.getMessage());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
@@ -98,7 +99,28 @@ public class GlobalExceptionHandler {
                 .badRequest()
                 .body(error);
     }
-    // Add other exception handlers as needed
+    @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
+    public ResponseEntity<Map<String, Object>> handleHttpMessageNotReadableException(org.springframework.http.converter.HttpMessageNotReadableException ex) {
+        Map<String, Object> error = new HashMap<>();
+        error.put("success", false);
+        error.put("message", "JSON parse error: " + ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
+    @ExceptionHandler(org.springframework.web.multipart.support.MissingServletRequestPartException.class)
+    public ResponseEntity<Map<String, String>> handleMissingServletRequestPartException(org.springframework.web.multipart.support.MissingServletRequestPartException ex) {
+        Map<String, String> error = new HashMap<>();
+        error.put("message", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
+    @ExceptionHandler(org.springframework.security.authentication.BadCredentialsException.class)
+    public ResponseEntity<Map<String, Object>> handleBadCredentialsException(org.springframework.security.authentication.BadCredentialsException ex) {
+        Map<String, Object> error = new HashMap<>();
+        error.put("success", false);
+        error.put("message", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
 
     private Map<String, String> getErrorMap(Exception ex){
         Map<String, String> error = new HashMap<>();

@@ -103,86 +103,96 @@ public class NurseSearchController {
             }
     )
     @GetMapping("/search")
-    public ResponseEntity<ApiResponse<Page<PublicNurseProfileResponse>>> searchNurses(
-            @Parameter(description = "Specialization filter") @RequestParam(required = false) String specialization,
-            @Parameter(description = "Minimum rating") @RequestParam(required = false) Double minRating,
-            @Parameter(description = "Patient latitude") @RequestParam(required = false) String latitude,
-            @Parameter(description = "Patient longitude") @RequestParam(required = false) String longitude,
-            @Parameter(description = "Search radius in km") @RequestParam(required = false, defaultValue = "50") Integer radiusKm,
-            @Parameter(description = "Language filter") @RequestParam(required = false) String language,
+    public ResponseEntity<com.pronurse.nurse.dto.NurseSearchResponse> searchNurses(
+            @Parameter(description = "Keyword search") @RequestParam(required = false) String keyword,
+            @Parameter(description = "City filter") @RequestParam(required = false) String city,
             @Parameter(description = "Gender filter") @RequestParam(required = false) Gender gender,
-            @Parameter(description = "Only on-duty nurses") @RequestParam(required = false, defaultValue = "false") Boolean onDutyOnly,
-            @PageableDefault(size = 20) Pageable pageable) {
+            @Parameter(description = "Minimum rating") @RequestParam(required = false) Double rating,
+            @Parameter(description = "Available Date filter") @RequestParam(name = "available_date", required = false) String availableDate,
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "10") Integer limit) {
 
-        log.info("Searching nurses with filters - specialization: {}, minRating: {}, location: {},{}, radius: {}km",
-                specialization, minRating, latitude, longitude, radiusKm);
+        log.info("Searching nurses with filters - keyword: {}, city: {}, gender: {}, rating: {}, availableDate: {}, page: {}, limit: {}",
+                keyword, city, gender, rating, availableDate, page, limit);
 
-        // Fetch all verified nurses
-        List<NurseProfile> allNurses = nurseProfileRepository.findAll().stream()
-                .filter(np -> np.isVerified() && "Approved".equals(np.getVerificationStatus()))
-                .collect(Collectors.toList());
+        List<NurseProfile> allNurses = nurseProfileRepository.searchNursesMobile(keyword, city, gender, rating);
 
-        // Apply filters
-        List<PublicNurseProfileResponse> filteredNurses = allNurses.stream()
-                .filter(np -> specialization == null || 
-                        (np.getSpecialization() != null && np.getSpecialization().toLowerCase().contains(specialization.toLowerCase())))
-                .filter(np -> minRating == null || np.getAverageRating() >= minRating)
-                .filter(np -> language == null || 
-                        (np.getLanguages() != null && np.getLanguages().toLowerCase().contains(language.toLowerCase())))
-                .filter(np -> gender == null || 
-                        (np.getGender() != null && np.getGender()==gender))
-                .filter(np -> !onDutyOnly || np.isOnDuty())
+        String targetDate = availableDate != null ? availableDate : "2026-07-20";
+
+        List<com.pronurse.nurse.dto.NurseSearchItem> items = allNurses.stream()
                 .map(np -> {
-                    Double distance = null;
-                    if (latitude != null && longitude != null && np.getLatitude() != null && np.getLongitude() != null) {
+                    // Split languages
+                    List<String> langList = java.util.Collections.emptyList();
+                    if (np.getLanguages() != null && !np.getLanguages().trim().isEmpty()) {
+                        langList = java.util.Arrays.stream(np.getLanguages().split(","))
+                                .map(String::trim)
+                                .collect(Collectors.toList());
+                    }
+
+                    // Experience as int (extract first number or default)
+                    int expYears = 0;
+                    if (np.getExperience() != null) {
                         try {
-                            double lat1 = Double.parseDouble(latitude);
-                            double lon1 = Double.parseDouble(longitude);
-                            distance = calculateDistance(lat1, lon1, np.getLatitude(), np.getLongitude());
-                        } catch (NumberFormatException e) {
-                            log.warn("Invalid coordinates provided");
+                            String numStr = np.getExperience().replaceAll("[^0-9]", "");
+                            if (!numStr.isEmpty()) {
+                                expYears = Integer.parseInt(numStr);
+                            }
+                        } catch (Exception e) {
+                            // ignore
                         }
                     }
-                    
-                    return PublicNurseProfileResponse.builder()
-                            .nurseId(np.getNurseId())
+
+                    // availability
+                    boolean availability = np.isOnDuty();
+
+                    // next available time
+                    String nextAvailable = targetDate + " 10:00 AM";
+
+                    return com.pronurse.nurse.dto.NurseSearchItem.builder()
+                            .id(np.getUser().getId())
                             .name(np.getUser().getName())
-                            .gender(np.getGender())
+                            .profile_image(np.getProfileImage() != null ? np.getProfileImage() : "https://example.com/uploads/nurses/default.jpg")
+                            .gender(np.getGender() != null ? np.getGender().name() : null)
+                            .experience(expYears)
                             .qualification(np.getQualification())
-                            .experience(np.getExperience())
                             .specialization(np.getSpecialization())
-                            .languages(np.getLanguages())
-                            .profileImage(np.getProfileImage() != null ? "/api/files/profile-image/" + np.getUser().getId() : null)
-                            .averageRating(np.getAverageRating())
-                            .totalReviews(np.getTotalReviewsCount())
-                            .isOnDuty(np.isOnDuty())
-                            .distanceKm(distance)
-                            .verificationStatus(np.getVerificationStatus())
+                            .languages(langList)
+                            .city(np.getCity() != null ? np.getCity() : "Lucknow")
+                            .rating(np.getAverageRating())
+                            .total_reviews(np.getTotalReviewsCount())
+                            .consultation_fee(np.getConsultationFee() != null ? np.getConsultationFee().doubleValue() : 0.0)
+                            .availability(availability)
+                            .next_available(nextAvailable)
                             .build();
-                })
-                .filter(np -> latitude == null || longitude == null || np.getDistanceKm() == null || np.getDistanceKm() <= radiusKm)
-                .sorted((a, b) -> {
-                    // Sort by distance if available, then by rating
-                    if (a.getDistanceKm() != null && b.getDistanceKm() != null) {
-                        return Double.compare(a.getDistanceKm(), b.getDistanceKm());
-                    }
-                    return Double.compare(b.getAverageRating(), a.getAverageRating());
                 })
                 .collect(Collectors.toList());
 
         // Apply pagination
-        int start = (int) pageable.getOffset();
-        int end = Math.min((start + pageable.getPageSize()), filteredNurses.size());
-        List<PublicNurseProfileResponse> pageContent = filteredNurses.subList(start, end);
-        Page<PublicNurseProfileResponse> page = new PageImpl<>(pageContent, pageable, filteredNurses.size());
+        int total = items.size();
+        int pageZeroBased = Math.max(0, page - 1);
+        int start = Math.min(pageZeroBased * limit, total);
+        int end = Math.min(start + limit, total);
+        List<com.pronurse.nurse.dto.NurseSearchItem> paginated = items.subList(start, end);
 
-        log.info("Found {} nurses matching criteria", filteredNurses.size());
+        if (total == 0) {
+            return ResponseEntity.ok(com.pronurse.nurse.dto.NurseSearchResponse.builder()
+                    .status(false)
+                    .message("No nurses found")
+                    .total(0)
+                    .page(page)
+                    .limit(limit)
+                    .data(java.util.Collections.emptyList())
+                    .build());
+        }
 
-        return ResponseEntity.ok(new ApiResponse<>(
-                true,
-                "Found " + filteredNurses.size() + " nurses matching criteria",
-                page
-        ));
+        return ResponseEntity.ok(com.pronurse.nurse.dto.NurseSearchResponse.builder()
+                .status(true)
+                .message("Nurses found successfully")
+                .total(total)
+                .page(page)
+                .limit(limit)
+                .data(paginated)
+                .build());
     }
 
     /**

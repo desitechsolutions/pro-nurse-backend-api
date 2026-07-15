@@ -22,6 +22,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
+import com.pronurse.auth.dto.PasswordRegisterRequest;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import java.time.LocalDate;
 
 @Service
 public class AuthService {
@@ -34,19 +37,22 @@ public class AuthService {
     private final SmsSender smsSender;
     private final NurseProfileRepository nurseProfileRepository;
     private final PatientProfileRepository patientProfileRepository;
+    private final PasswordEncoder passwordEncoder;
 
     public AuthService(UserRepository userRepository,
                        JwtUtil jwtUtil,
                        RefreshTokenService refreshTokenService,
                        SmsSender smsSender,
                        NurseProfileRepository nurseProfileRepository,
-                       PatientProfileRepository patientProfileRepository) {
+                       PatientProfileRepository patientProfileRepository,
+                       PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.jwtUtil = jwtUtil;
         this.refreshTokenService = refreshTokenService;
         this.smsSender = smsSender;
         this.nurseProfileRepository = nurseProfileRepository;
         this.patientProfileRepository = patientProfileRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     /**
@@ -113,7 +119,14 @@ public class AuthService {
         RefreshToken newRefreshToken = refreshTokenService.createRefreshToken(user.getMobile());
         String accessToken = jwtUtil.generateAccessToken(user);
 
-        return new AuthResponse(accessToken, user.getRole().name(), newRefreshToken.getToken());
+        return AuthResponse.builder()
+                .accessToken(accessToken)
+                .role(user.getRole().name())
+                .refreshToken(newRefreshToken.getToken())
+                .userId(user.getId())
+                .name(user.getName())
+                .mobile(user.getMobile())
+                .build();
     }
 
     /**
@@ -160,5 +173,95 @@ public class AuthService {
     public User getUserByMobile(String mobile) {
         return userRepository.findByMobile(mobile)
                 .orElseThrow(() -> new UsernameNotFoundException("User record matching phone reference not found"));
+    }
+
+    /**
+     * Flutter App Hook: Password-based registration
+     */
+    @Transactional
+    public void registerWithPassword(PasswordRegisterRequest request) {
+        if (userRepository.findByMobile(request.getMobile()).isPresent()) {
+            throw new ApplicationException("Mobile number is already registered.");
+        }
+
+        User user = new User();
+        user.setMobile(request.getMobile());
+        user.setName(request.getName());
+        user.setEmail(request.getEmail());
+        user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+        
+        Role mappedRole;
+        try {
+            if (request.getLoginType().equalsIgnoreCase("Patient")) {
+                mappedRole = Role.PATIENT;
+            } else if (request.getLoginType().equalsIgnoreCase("Nurse")) {
+                mappedRole = Role.NURSE;
+            } else {
+                mappedRole = Role.valueOf(request.getLoginType().toUpperCase());
+            }
+        } catch (Exception e) {
+            throw new ApplicationException("Invalid roleType: " + request.getLoginType());
+        }
+        user.setRole(mappedRole);
+        user.setMobileVerified(true);
+        user.setActive(true);
+
+        User savedUser = userRepository.save(user);
+
+        if (mappedRole == Role.NURSE) {
+            NurseProfile nurseProfile = new NurseProfile();
+            nurseProfile.setUser(savedUser);
+            nurseProfile.setNurseId("NUR-" + savedUser.getId() + "-" + System.currentTimeMillis() % 1000);
+            
+            if (request.getGender() != null && !request.getGender().isBlank()) {
+                try {
+                    nurseProfile.setGender(com.pronurse.enums.Gender.valueOf(request.getGender().toUpperCase()));
+                } catch (Exception ignored) {}
+            }
+            if (request.getDob() != null && !request.getDob().isBlank()) {
+                try {
+                    nurseProfile.setDob(LocalDate.parse(request.getDob()));
+                } catch (Exception ignored) {}
+            }
+            nurseProfile.setAddress(request.getAddress());
+            nurseProfile.setQualification(request.getQualification());
+            nurseProfile.setExperience(request.getExperience());
+            nurseProfile.setSpecialization(request.getSpecialization());
+            nurseProfile.setRegistrationNumber(request.getRegistrationNumber());
+            
+            if (request.getLatitude() != null && !request.getLatitude().isBlank()) {
+                try { nurseProfile.setLatitude(Double.parseDouble(request.getLatitude())); } catch (Exception ignored) {}
+            }
+            if (request.getLongitude() != null && !request.getLongitude().isBlank()) {
+                try { nurseProfile.setLongitude(Double.parseDouble(request.getLongitude())); } catch (Exception ignored) {}
+            }
+            nurseProfile.setVerificationStatus("Pending");
+            nurseProfileRepository.save(nurseProfile);
+            
+        } else if (mappedRole == Role.PATIENT) {
+            PatientProfile patientProfile = new PatientProfile();
+            patientProfile.setUser(savedUser);
+            patientProfile.setPatientId("PAT-" + savedUser.getId() + "-" + System.currentTimeMillis() % 1000);
+            
+            if (request.getGender() != null && !request.getGender().isBlank()) {
+                try {
+                    patientProfile.setGender(com.pronurse.enums.Gender.valueOf(request.getGender().toUpperCase()));
+                } catch (Exception ignored) {}
+            }
+            if (request.getDob() != null && !request.getDob().isBlank()) {
+                try {
+                    patientProfile.setDob(LocalDate.parse(request.getDob()));
+                } catch (Exception ignored) {}
+            }
+            patientProfile.setAddress(request.getAddress());
+            
+            if (request.getLatitude() != null && !request.getLatitude().isBlank()) {
+                try { patientProfile.setLatitude(Double.parseDouble(request.getLatitude())); } catch (Exception ignored) {}
+            }
+            if (request.getLongitude() != null && !request.getLongitude().isBlank()) {
+                try { patientProfile.setLongitude(Double.parseDouble(request.getLongitude())); } catch (Exception ignored) {}
+            }
+            patientProfileRepository.save(patientProfile);
+        }
     }
 }
