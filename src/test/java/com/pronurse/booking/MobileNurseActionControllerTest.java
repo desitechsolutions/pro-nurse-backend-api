@@ -98,7 +98,7 @@ class MobileNurseActionControllerTest {
         SecurityContextHolder.getContext().setAuthentication(auth);
 
         Map<String, Object> body = new HashMap<>();
-        body.put("booking_id", testBooking.getId());
+        body.put("booking_no", testBooking.getBookingNo());
         body.put("nurse_id", nurseUser.getId());
 
         ResponseEntity<Map<String, Object>> response = mobileNurseActionController.acceptBooking(body, auth);
@@ -108,7 +108,8 @@ class MobileNurseActionControllerTest {
         assertEquals("Booking accepted successfully.", response.getBody().get("message"));
 
         Map<String, Object> data = (Map<String, Object>) response.getBody().get("data");
-        assertEquals(testBooking.getId(), data.get("booking_id"));
+        assertNull(data.get("booking_id")); // Verify DB ID is not exposed
+        assertEquals(testBooking.getBookingNo(), data.get("booking_no"));
         assertEquals("Accepted", data.get("status"));
     }
 
@@ -122,7 +123,7 @@ class MobileNurseActionControllerTest {
         SecurityContextHolder.getContext().setAuthentication(auth);
 
         Map<String, Object> body = new HashMap<>();
-        body.put("booking_id", testBooking.getId());
+        body.put("booking_no", testBooking.getBookingNo());
         body.put("reason_id", 2);
         body.put("remarks", "Busy right now");
 
@@ -131,5 +132,96 @@ class MobileNurseActionControllerTest {
         assertEquals(200, response.getStatusCode().value());
         assertTrue((Boolean) response.getBody().get("status"));
         assertEquals("Booking rejected successfully.", response.getBody().get("message"));
+
+        Map<String, Object> data = (Map<String, Object>) response.getBody().get("data");
+        assertNull(data.get("booking_id")); // Verify DB ID is not exposed
+        assertEquals(testBooking.getBookingNo(), data.get("booking_no"));
+    }
+
+    @Test
+    void testCompleteBookingSuccess() {
+        Authentication auth = new UsernamePasswordAuthenticationToken(
+                nurseUser.getMobile(), 
+                null, 
+                org.springframework.security.core.authority.AuthorityUtils.createAuthorityList("ROLE_NURSE")
+        );
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
+        // Assign nurse to booking
+        testBooking.setAssignedNurseUser(nurseUser);
+        testBooking.setBookingStatus("ACCEPTED");
+        testBooking = bookingRepository.save(testBooking);
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("booking_no", testBooking.getBookingNo());
+        body.put("remarks", "Patient was treated well");
+
+        ResponseEntity<Map<String, Object>> response = mobileNurseActionController.completeBooking(body, auth);
+        assertNotNull(response);
+        assertEquals(200, response.getStatusCode().value());
+        assertTrue((Boolean) response.getBody().get("status"));
+        assertEquals("Booking completed successfully.", response.getBody().get("message"));
+
+        Map<String, Object> data = (Map<String, Object>) response.getBody().get("data");
+        assertNull(data.get("booking_id")); // Verify DB ID is not exposed
+        assertEquals(testBooking.getBookingNo(), data.get("booking_no"));
+        assertEquals("COMPLETED", data.get("booking_status"));
+    }
+
+    @Test
+    void testCompleteBookingUnauthorized() {
+        Authentication auth = new UsernamePasswordAuthenticationToken(
+                "9999990000", 
+                null, 
+                org.springframework.security.core.authority.AuthorityUtils.createAuthorityList("ROLE_NURSE")
+        );
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
+        // Assign nurse to booking
+        testBooking.setAssignedNurseUser(nurseUser);
+        testBooking.setBookingStatus("ACCEPTED");
+        testBooking = bookingRepository.save(testBooking);
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("booking_no", testBooking.getBookingNo());
+        body.put("remarks", "Treated");
+
+        assertThrows(com.pronurse.common.exception.ApplicationException.class, () -> {
+            mobileNurseActionController.completeBooking(body, auth);
+        });
+    }
+
+    @Test
+    void testAcceptBookingMissingBookingNo() {
+        Authentication auth = new UsernamePasswordAuthenticationToken(
+                nurseUser.getMobile(), 
+                null, 
+                org.springframework.security.core.authority.AuthorityUtils.createAuthorityList("ROLE_NURSE")
+        );
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
+        Map<String, Object> body = new HashMap<>(); // Missing booking_no
+
+        ResponseEntity<Map<String, Object>> response = mobileNurseActionController.acceptBooking(body, auth);
+        assertNotNull(response);
+        assertFalse((Boolean) response.getBody().get("status"));
+        assertEquals("Booking number is required.", response.getBody().get("message"));
+    }
+
+    @Test
+    void testAcceptBookingInvalidBookingNo() {
+        Authentication auth = new UsernamePasswordAuthenticationToken(
+                nurseUser.getMobile(), 
+                null, 
+                org.springframework.security.core.authority.AuthorityUtils.createAuthorityList("ROLE_NURSE")
+        );
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("booking_no", "NON_EXISTENT_BOOKING_123");
+
+        assertThrows(com.pronurse.common.exception.ApplicationException.class, () -> {
+            mobileNurseActionController.acceptBooking(body, auth);
+        });
     }
 }

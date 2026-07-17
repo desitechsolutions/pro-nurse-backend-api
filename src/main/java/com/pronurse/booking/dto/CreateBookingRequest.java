@@ -7,17 +7,22 @@ import java.math.BigDecimal;
 import java.util.List;
 
 @Data
+@Schema(description = "Request body to create a new booking")
 public class CreateBookingRequest {
     @NotEmpty(message = "At least one service subcategory must be selected")
+    @Schema(description = "List of service subcategory IDs selected for the booking", example = "[1, 2]")
     private List<Long> selectedServiceIds;
 
     @NotBlank(message = "Date choice cannot be empty")
+    @Schema(description = "Booking date in YYYY-MM-DD format", example = "2024-01-20")
     private String bookingDate; // Expected Format: YYYY-MM-DD
 
     @NotBlank(message = "Time slot required")
+    @Schema(description = "Booking time slot in HH:mm format", example = "14:30")
     private String bookingTime;
 
     @NotBlank(message = "Address target cannot be blank")
+    @Schema(description = "Detailed service delivery address", example = "123 Main St, Apartment 4B")
     private String address;
 
     @Schema(description = "Patient coordinate latitude", example = "28.6139")

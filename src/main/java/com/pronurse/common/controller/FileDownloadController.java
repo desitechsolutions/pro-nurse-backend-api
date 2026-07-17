@@ -8,6 +8,10 @@ import com.pronurse.common.exception.ApplicationException;
 import com.pronurse.patient.repository.PatientProfileRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -52,6 +56,14 @@ public class FileDownloadController {
                 **Returns:** PDF or image file
                 """
     )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Prescription file retrieved successfully",
+                    content = @Content(mediaType = MediaType.APPLICATION_OCTET_STREAM_VALUE)),
+            @ApiResponse(responseCode = "400", description = "Invalid booking number or no prescription attached"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized access"),
+            @ApiResponse(responseCode = "403", description = "Forbidden access"),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     @GetMapping("/prescription/{bookingNo}")
     @PreAuthorize("hasAnyRole('PATIENT', 'NURSE', 'ADMIN')")
     public ResponseEntity<Resource> downloadPrescription(
@@ -94,6 +106,14 @@ public class FileDownloadController {
                 **Returns:** Image file (JPEG, PNG, etc.)
                 """
     )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Profile image retrieved successfully",
+                    content = @Content(mediaType = MediaType.IMAGE_JPEG_VALUE)),
+            @ApiResponse(responseCode = "400", description = "Invalid user ID or no profile image found"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized access"),
+            @ApiResponse(responseCode = "403", description = "Forbidden access"),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     @GetMapping("/profile-image/{userId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Resource> downloadProfileImage(
@@ -142,6 +162,14 @@ public class FileDownloadController {
                 **Security:** Validates file path to prevent directory traversal attacks
                 """
     )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "File retrieved successfully",
+                    content = @Content(mediaType = MediaType.APPLICATION_OCTET_STREAM_VALUE)),
+            @ApiResponse(responseCode = "400", description = "Invalid filename or file not found"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized access"),
+            @ApiResponse(responseCode = "403", description = "Forbidden access"),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     @GetMapping("/download/{filename}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Resource> downloadFile(

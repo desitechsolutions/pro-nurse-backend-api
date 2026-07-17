@@ -4,9 +4,13 @@ import com.pronurse.booking.dto.BookingHistoryResponse;
 import com.pronurse.booking.dto.BookingHistoryFilterRequest;
 import com.pronurse.booking.service.BookingExportService;
 import com.pronurse.booking.service.BookingService;
-import com.pronurse.common.payload.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -21,6 +25,7 @@ import java.util.List;
 @RequestMapping("/api/history")
 @RequiredArgsConstructor
 @Tag(name = "10. Booking History", description = "Booking history and filtering")
+@SecurityRequirement(name = "Bearer Authentication")
 public class BookingHistoryController {
 
     private final BookingService bookingService;
@@ -31,9 +36,16 @@ public class BookingHistoryController {
      */
     @GetMapping("/patient/list")
     @PreAuthorize("hasRole('PATIENT')")
-    public ResponseEntity<ApiResponse<List<BookingHistoryResponse>>> getPatientLog(Authentication authentication) {
+    @Operation(summary = "Get patient booking history list", description = "Fetches the full booking history list for the logged-in patient.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Patient booking history retrieved successfully", content = @Content(schema = @Schema(implementation = com.pronurse.common.payload.ApiResponse.class))),
+        @ApiResponse(responseCode = "401", description = "Unauthorized"),
+        @ApiResponse(responseCode = "403", description = "Forbidden"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
+    public ResponseEntity<com.pronurse.common.payload.ApiResponse<List<BookingHistoryResponse>>> getPatientLog(Authentication authentication) {
         String patientMobile = (String) authentication.getPrincipal();
-        return ResponseEntity.ok(new ApiResponse<>(
+        return ResponseEntity.ok(new com.pronurse.common.payload.ApiResponse<>(
                 true, "Patient history stream fetched successfully.", bookingService.getPatientCompleteHistory(patientMobile)
         ));
     }
@@ -43,9 +55,16 @@ public class BookingHistoryController {
      */
     @GetMapping("/nurse/list")
     @PreAuthorize("hasRole('NURSE')")
-    public ResponseEntity<ApiResponse<List<BookingHistoryResponse>>> getNurseLog(Authentication authentication) {
+    @Operation(summary = "Get nurse booking history list", description = "Fetches the full booking history/log list for the logged-in nurse.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Nurse booking history retrieved successfully", content = @Content(schema = @Schema(implementation = com.pronurse.common.payload.ApiResponse.class))),
+        @ApiResponse(responseCode = "401", description = "Unauthorized"),
+        @ApiResponse(responseCode = "403", description = "Forbidden"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
+    public ResponseEntity<com.pronurse.common.payload.ApiResponse<List<BookingHistoryResponse>>> getNurseLog(Authentication authentication) {
         String nurseMobile = (String) authentication.getPrincipal();
-        return ResponseEntity.ok(new ApiResponse<>(
+        return ResponseEntity.ok(new com.pronurse.common.payload.ApiResponse<>(
                 true, "Nurse fulfillment ledger tracking synced.", bookingService.getNurseCompleteHistory(nurseMobile)
         ));
     }
@@ -57,14 +76,21 @@ public class BookingHistoryController {
     @PreAuthorize("hasRole('PATIENT')")
     @Operation(summary = "Get filtered patient booking history", 
                description = "Advanced filtering with date range, status, amount, search, and pagination")
-    public ResponseEntity<ApiResponse<Page<BookingHistoryResponse>>> getFilteredPatientHistory(
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Filtered history retrieved successfully", content = @Content(schema = @Schema(implementation = com.pronurse.common.payload.ApiResponse.class))),
+        @ApiResponse(responseCode = "400", description = "Invalid filter request details"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized"),
+        @ApiResponse(responseCode = "403", description = "Forbidden"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
+    public ResponseEntity<com.pronurse.common.payload.ApiResponse<Page<BookingHistoryResponse>>> getFilteredPatientHistory(
             @Valid @RequestBody BookingHistoryFilterRequest filter,
             Authentication authentication) {
         
         String patientMobile = (String) authentication.getPrincipal();
         Page<BookingHistoryResponse> history = bookingService.getFilteredPatientHistory(patientMobile, filter);
         
-        return ResponseEntity.ok(new ApiResponse<>(
+        return ResponseEntity.ok(new com.pronurse.common.payload.ApiResponse<>(
                 true, "Filtered patient history retrieved successfully", history
         ));
     }
@@ -76,14 +102,21 @@ public class BookingHistoryController {
     @PreAuthorize("hasRole('NURSE')")
     @Operation(summary = "Get filtered nurse booking history", 
                description = "Advanced filtering with date range, status, amount, search, and pagination")
-    public ResponseEntity<ApiResponse<Page<BookingHistoryResponse>>> getFilteredNurseHistory(
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Filtered history retrieved successfully", content = @Content(schema = @Schema(implementation = com.pronurse.common.payload.ApiResponse.class))),
+        @ApiResponse(responseCode = "400", description = "Invalid filter request details"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized"),
+        @ApiResponse(responseCode = "403", description = "Forbidden"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
+    public ResponseEntity<com.pronurse.common.payload.ApiResponse<Page<BookingHistoryResponse>>> getFilteredNurseHistory(
             @Valid @RequestBody BookingHistoryFilterRequest filter,
             Authentication authentication) {
         
         String nurseMobile = (String) authentication.getPrincipal();
         Page<BookingHistoryResponse> history = bookingService.getFilteredNurseHistory(nurseMobile, filter);
         
-        return ResponseEntity.ok(new ApiResponse<>(
+        return ResponseEntity.ok(new com.pronurse.common.payload.ApiResponse<>(
                 true, "Filtered nurse history retrieved successfully", history
         ));
     }
@@ -95,6 +128,13 @@ public class BookingHistoryController {
     @PreAuthorize("hasRole('PATIENT')")
     @Operation(summary = "Export patient history to CSV", 
                description = "Export filtered booking history as CSV file")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "CSV report exported successfully", content = @Content(mediaType = "text/csv")),
+        @ApiResponse(responseCode = "400", description = "Invalid request payload"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized"),
+        @ApiResponse(responseCode = "403", description = "Forbidden"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     public ResponseEntity<byte[]> exportPatientHistoryCSV(
             @Valid @RequestBody BookingHistoryFilterRequest filter,
             Authentication authentication) {
@@ -115,6 +155,13 @@ public class BookingHistoryController {
     @PreAuthorize("hasRole('PATIENT')")
     @Operation(summary = "Export patient history to PDF", 
                description = "Export filtered booking history as PDF file")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "PDF report exported successfully", content = @Content(mediaType = "application/pdf")),
+        @ApiResponse(responseCode = "400", description = "Invalid request payload"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized"),
+        @ApiResponse(responseCode = "403", description = "Forbidden"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     public ResponseEntity<byte[]> exportPatientHistoryPDF(
             @Valid @RequestBody BookingHistoryFilterRequest filter,
             Authentication authentication) {
@@ -135,6 +182,13 @@ public class BookingHistoryController {
     @PreAuthorize("hasRole('NURSE')")
     @Operation(summary = "Export nurse history to CSV", 
                description = "Export filtered booking history as CSV file")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "CSV report exported successfully", content = @Content(mediaType = "text/csv")),
+        @ApiResponse(responseCode = "400", description = "Invalid request payload"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized"),
+        @ApiResponse(responseCode = "403", description = "Forbidden"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     public ResponseEntity<byte[]> exportNurseHistoryCSV(
             @Valid @RequestBody BookingHistoryFilterRequest filter,
             Authentication authentication) {
@@ -155,6 +209,13 @@ public class BookingHistoryController {
     @PreAuthorize("hasRole('NURSE')")
     @Operation(summary = "Export nurse history to PDF", 
                description = "Export filtered booking history as PDF file")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "PDF report exported successfully", content = @Content(mediaType = "application/pdf")),
+        @ApiResponse(responseCode = "400", description = "Invalid request payload"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized"),
+        @ApiResponse(responseCode = "403", description = "Forbidden"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     public ResponseEntity<byte[]> exportNurseHistoryPDF(
             @Valid @RequestBody BookingHistoryFilterRequest filter,
             Authentication authentication) {

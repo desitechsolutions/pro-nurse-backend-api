@@ -4,6 +4,11 @@ import com.pronurse.patient.dto.PatientProfileUpdateRequest;
 import com.pronurse.patient.dto.PatientProfileResponse;
 import com.pronurse.common.payload.ApiResponse;
 import com.pronurse.patient.service.PatientProfileService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +23,7 @@ import org.springframework.web.multipart.MultipartFile;
 @RequestMapping("/api/patient/profile")
 @Tag(name = "02. Patient Profile",
         description = "Patient profile management APIs")
+@SecurityRequirement(name = "Bearer Authentication")
 @RequiredArgsConstructor
 public class PatientProfileController {
 
@@ -28,6 +34,15 @@ public class PatientProfileController {
      */
     @PutMapping(value = "/update", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasRole('PATIENT')")
+    @Operation(summary = "Update patient profile", description = "Updates the patient's profile details, profile image, and medical reports.")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Patient profile records updated successfully",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid input or validation error"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthorized access"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden access"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     public ResponseEntity<ApiResponse<Void>> syncPatientProfile(
             @Valid @RequestPart("data") PatientProfileUpdateRequest request,
             @RequestPart(value = "profileImage", required = false) MultipartFile profileImage,
@@ -44,6 +59,15 @@ public class PatientProfileController {
      */
     @GetMapping("/me")
     @PreAuthorize("hasRole('PATIENT')")
+    @Operation(summary = "Get current patient profile", description = "Retrieves profile details and records for the currently authenticated patient.")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Patient profile records retrieved",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthorized access"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden access"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Patient profile not found"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     public ResponseEntity<ApiResponse<PatientProfileResponse>> getMyProfile(Authentication authentication) {
         String mobile = (String) authentication.getPrincipal();
         PatientProfileResponse dataCard = patientProfileService.getProfileByMobile(mobile);
