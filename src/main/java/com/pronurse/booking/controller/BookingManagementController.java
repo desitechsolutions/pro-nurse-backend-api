@@ -8,10 +8,12 @@ import com.pronurse.booking.service.DispatchAlertService;
 import com.pronurse.auth.entity.User;
 import com.pronurse.auth.repository.UserRepository;
 import com.pronurse.common.exception.ApplicationException;
-import com.pronurse.common.payload.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -82,7 +84,15 @@ public class BookingManagementController {
     @PostMapping("/cancel")
     @PreAuthorize("hasAnyRole('PATIENT', 'NURSE', 'ADMIN')")
     @Transactional
-    public ResponseEntity<ApiResponse<String>> cancelBooking(
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Booking cancelled successfully", content = @Content(schema = @Schema(implementation = com.pronurse.common.payload.ApiResponse.class))),
+        @ApiResponse(responseCode = "400", description = "Invalid request or booking cannot be cancelled", content = @Content(schema = @Schema(implementation = com.pronurse.common.payload.ApiResponse.class))),
+        @ApiResponse(responseCode = "401", description = "Unauthorized"),
+        @ApiResponse(responseCode = "403", description = "Forbidden"),
+        @ApiResponse(responseCode = "404", description = "Booking not found"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
+    public ResponseEntity<com.pronurse.common.payload.ApiResponse<String>> cancelBooking(
             @Valid @RequestBody CancelBookingRequest request,
             Authentication authentication) {
 
@@ -138,7 +148,7 @@ public class BookingManagementController {
         log.info("Booking {} cancelled by {} (previous status: {})",
                 booking.getBookingNo(), request.getCancelledBy(), previousStatus);
 
-        return ResponseEntity.ok(new ApiResponse<>(
+        return ResponseEntity.ok(new com.pronurse.common.payload.ApiResponse<>(
                 true,
                 "Booking cancelled successfully. Refund will be processed as per cancellation policy.",
                 booking.getBookingNo()
@@ -187,7 +197,15 @@ public class BookingManagementController {
     @PostMapping("/reschedule")
     @PreAuthorize("hasAnyRole('PATIENT', 'NURSE', 'ADMIN')")
     @Transactional
-    public ResponseEntity<ApiResponse<String>> rescheduleBooking(
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Booking rescheduled successfully", content = @Content(schema = @Schema(implementation = com.pronurse.common.payload.ApiResponse.class))),
+        @ApiResponse(responseCode = "400", description = "Invalid reschedule request details or timing constraints", content = @Content(schema = @Schema(implementation = com.pronurse.common.payload.ApiResponse.class))),
+        @ApiResponse(responseCode = "401", description = "Unauthorized"),
+        @ApiResponse(responseCode = "403", description = "Forbidden"),
+        @ApiResponse(responseCode = "404", description = "Booking not found"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
+    public ResponseEntity<com.pronurse.common.payload.ApiResponse<String>> rescheduleBooking(
             @Valid @RequestBody RescheduleBookingRequest request,
             Authentication authentication) {
 
@@ -257,7 +275,7 @@ public class BookingManagementController {
         log.info("Booking {} rescheduled from {} {} to {} {}",
                 booking.getBookingNo(), oldDate, oldTime, request.getNewDate(), request.getNewTime());
 
-        return ResponseEntity.ok(new ApiResponse<>(
+        return ResponseEntity.ok(new com.pronurse.common.payload.ApiResponse<>(
                 true,
                 "Booking rescheduled successfully. " +
                         (booking.getAssignedNurseUser() != null ?

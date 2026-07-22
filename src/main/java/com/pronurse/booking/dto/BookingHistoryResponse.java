@@ -9,13 +9,27 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@Schema(description = "Response containing detailed booking history information")
 public class BookingHistoryResponse {
+    @Schema(description = "Unique identifier of the booking", example = "BK-2024-001")
     private String bookingId;
+
+    @Schema(description = "Date of the booking in YYYY-MM-DD format", example = "2024-01-20")
     private String bookingDate;
+
+    @Schema(description = "Time slot of the booking", example = "14:30")
     private String bookingTime;
+
+    @Schema(description = "Current status of the booking", example = "CONFIRMED")
     private String bookingStatus;
+
+    @Schema(description = "Current payment status of the booking", example = "PAID")
     private String paymentStatus;
+
+    @Schema(description = "Service delivery address", example = "123 Main St, Apartment 4B")
     private String address;
+
+    @Schema(description = "Additional remarks/instructions for the booking", example = "Please bring necessary equipment")
     private String remarks;
     @Schema(description = "Prescription file download URL if present", example = "/api/files/prescription/1")
     private String prescriptionUrl;

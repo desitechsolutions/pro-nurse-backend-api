@@ -1,5 +1,6 @@
 package com.pronurse.notification.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -11,11 +12,19 @@ import java.util.Map;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@Schema(description = "Template representing notification message details sent to FCM")
 public class NotificationTemplate {
     
+    @Schema(description = "Template identifier key", example = "NEW_BOOKING")
     private String templateId;
+
+    @Schema(description = "Title of the notification", example = "New Booking Request")
     private String title;
+
+    @Schema(description = "Body of the notification", example = "New booking from John Doe at 456 Wellness Ave")
     private String body;
+
+    @Schema(description = "Custom data payload map associated with the notification")
     private Map<String, String> data;
     
     // Predefined templates

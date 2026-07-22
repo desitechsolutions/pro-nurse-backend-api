@@ -11,6 +11,13 @@ import com.pronurse.booking.service.BookingService;
 import com.pronurse.patient.entity.PatientProfile;
 import com.pronurse.patient.repository.PatientProfileRepository;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -28,6 +35,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/nurse")
 @Tag(name = "15. Mobile Nurse Actions", description = "Nurse operations mapped specifically for the Flutter client workflows")
+@SecurityRequirement(name = "Bearer Authentication")
 @RequiredArgsConstructor
 @Slf4j
 public class MobileNurseActionController {
@@ -40,14 +48,35 @@ public class MobileNurseActionController {
 
     @PostMapping("/booking/accept")
     @PreAuthorize("hasRole('NURSE')")
+    @Operation(summary = "Accept booking offer", description = "Accepts a pending booking assignment offer sent to the nurse.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Booking offer processed successfully", content = @Content(schema = @Schema(implementation = Map.class))),
+        @ApiResponse(responseCode = "400", description = "Invalid request payload or booking already accepted"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized"),
+        @ApiResponse(responseCode = "403", description = "Forbidden"),
+        @ApiResponse(responseCode = "404", description = "Booking not found"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     public ResponseEntity<Map<String, Object>> acceptBooking(
             @RequestBody Map<String, Object> body, Authentication authentication) {
 
         String nurseMobile = (String) authentication.getPrincipal();
         log.info("Mobile accept request received from nurse mobile: {}, payload: {}", nurseMobile, body);
 
-        Long bookingId = Long.valueOf(body.get("booking_id").toString());
-        Booking booking = bookingRepository.findById(bookingId)
+        Object bookingNoObj = body.get("booking_no");
+        if (bookingNoObj == null) {
+            bookingNoObj = body.get("bookingNo");
+        }
+
+        if (bookingNoObj == null || bookingNoObj.toString().trim().isEmpty()) {
+            return ResponseEntity.ok(Map.of(
+                    "status", false,
+                    "message", "Booking number is required."
+            ));
+        }
+
+        String bookingNo = bookingNoObj.toString().trim();
+        Booking booking = bookingRepository.findByBookingNo(bookingNo)
                 .orElseThrow(() -> new com.pronurse.common.exception.ApplicationException("Booking not found."));
 
         User nurseUser = userRepository.findByMobile(nurseMobile)
@@ -68,7 +97,6 @@ public class MobileNurseActionController {
                         "status", true,
                         "message", "Booking accepted successfully.",
                         "data", Map.of(
-                                "booking_id", booking.getId(),
                                 "booking_no", booking.getBookingNo(),
                                 "status", "Accepted",
                                 "accepted_at", booking.getUpdatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
@@ -83,7 +111,7 @@ public class MobileNurseActionController {
         }
 
         // Check active assignment
-        BookingAssignment assignment = assignmentRepository.findByBookingIdOrderByNotifiedAtAsc(bookingId).stream()
+        BookingAssignment assignment = assignmentRepository.findByBookingIdOrderByNotifiedAtAsc(booking.getId()).stream()
                 .filter(ba -> ba.getNurseUser().getId().equals(nurseUser.getId()))
                 .findFirst()
                 .orElse(null);
@@ -106,10 +134,9 @@ public class MobileNurseActionController {
         bookingService.processNurseResponse(booking.getBookingNo(), nurseMobile, true, null);
 
         // Fetch refreshed booking
-        Booking updatedBooking = bookingRepository.findById(bookingId).get();
+        Booking updatedBooking = bookingRepository.findById(booking.getId()).get();
 
         Map<String, Object> data = new HashMap<>();
-        data.put("booking_id", updatedBooking.getId());
         data.put("booking_no", updatedBooking.getBookingNo());
         data.put("status", "Accepted");
         data.put("accepted_at", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
@@ -124,14 +151,35 @@ public class MobileNurseActionController {
 
     @PostMapping("/booking/reject")
     @PreAuthorize("hasRole('NURSE')")
+    @Operation(summary = "Reject booking offer", description = "Rejects a booking offer with a reason code and optional remarks.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Booking offer rejected successfully", content = @Content(schema = @Schema(implementation = Map.class))),
+        @ApiResponse(responseCode = "400", description = "Invalid request payload or offer already processed"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized"),
+        @ApiResponse(responseCode = "403", description = "Forbidden"),
+        @ApiResponse(responseCode = "404", description = "Booking not found"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     public ResponseEntity<Map<String, Object>> rejectBooking(
             @RequestBody Map<String, Object> body, Authentication authentication) {
 
         String nurseMobile = (String) authentication.getPrincipal();
         log.info("Mobile reject request received from nurse mobile: {}, payload: {}", nurseMobile, body);
 
-        Long bookingId = Long.valueOf(body.get("booking_id").toString());
-        Booking booking = bookingRepository.findById(bookingId)
+        Object bookingNoObj = body.get("booking_no");
+        if (bookingNoObj == null) {
+            bookingNoObj = body.get("bookingNo");
+        }
+
+        if (bookingNoObj == null || bookingNoObj.toString().trim().isEmpty()) {
+            return ResponseEntity.ok(Map.of(
+                    "status", false,
+                    "message", "Booking number is required."
+            ));
+        }
+
+        String bookingNo = bookingNoObj.toString().trim();
+        Booking booking = bookingRepository.findByBookingNo(bookingNo)
                 .orElseThrow(() -> new com.pronurse.common.exception.ApplicationException("Booking not found."));
 
         Integer reasonId = Integer.valueOf(body.get("reason_id").toString());
@@ -145,7 +193,7 @@ public class MobileNurseActionController {
         User nurseUser = userRepository.findByMobile(nurseMobile)
                 .orElseThrow(() -> new com.pronurse.common.exception.ApplicationException("Nurse user profile not found."));
 
-        BookingAssignment assignment = assignmentRepository.findByBookingIdOrderByNotifiedAtAsc(bookingId).stream()
+        BookingAssignment assignment = assignmentRepository.findByBookingIdOrderByNotifiedAtAsc(booking.getId()).stream()
                 .filter(ba -> ba.getNurseUser().getId().equals(nurseUser.getId()))
                 .findFirst()
                 .orElse(null);
@@ -161,7 +209,7 @@ public class MobileNurseActionController {
         bookingService.processNurseResponse(booking.getBookingNo(), nurseMobile, false, reasonText);
 
         Map<String, Object> data = new HashMap<>();
-        data.put("booking_id", booking.getId());
+        data.put("booking_no", booking.getBookingNo());
         data.put("booking_status", "REJECTED");
         data.put("rejected_at", LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant().toString());
 
@@ -175,10 +223,17 @@ public class MobileNurseActionController {
 
     @GetMapping("/bookings")
     @PreAuthorize("hasRole('NURSE')")
+    @Operation(summary = "Get nurse bookings list", description = "Fetches paginated list of bookings mapped to the nurse's dashboard.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "List of bookings retrieved successfully", content = @Content(schema = @Schema(implementation = Map.class))),
+        @ApiResponse(responseCode = "401", description = "Unauthorized"),
+        @ApiResponse(responseCode = "403", description = "Forbidden"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     public ResponseEntity<Map<String, Object>> getBookings(
-            @RequestParam(required = false) String status,
-            @RequestParam(defaultValue = "1") Integer page,
-            @RequestParam(defaultValue = "20") Integer limit,
+            @Parameter(description = "Filter by booking status") @RequestParam(required = false) String status,
+            @Parameter(description = "Page number (1-indexed)") @RequestParam(defaultValue = "1") Integer page,
+            @Parameter(description = "Number of items per page") @RequestParam(defaultValue = "20") Integer limit,
             Authentication authentication) {
 
         String nurseMobile = (String) authentication.getPrincipal();
@@ -248,8 +303,16 @@ public class MobileNurseActionController {
 
     @GetMapping("/bookings/{booking_id}")
     @PreAuthorize("hasRole('NURSE')")
+    @Operation(summary = "Get booking details", description = "Fetches detailed information for a specific booking assignment.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Booking details retrieved successfully", content = @Content(schema = @Schema(implementation = Map.class))),
+        @ApiResponse(responseCode = "401", description = "Unauthorized"),
+        @ApiResponse(responseCode = "403", description = "Forbidden"),
+        @ApiResponse(responseCode = "404", description = "Booking not found"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     public ResponseEntity<Map<String, Object>> getBookingDetails(
-            @PathVariable("booking_id") Long bookingId, Authentication authentication) {
+            @Parameter(description = "The database ID of the booking") @PathVariable("booking_id") Long bookingId, Authentication authentication) {
 
         String nurseMobile = (String) authentication.getPrincipal();
         log.info("Fetch booking details request for nurse: {}, bookingId: {}", nurseMobile, bookingId);
@@ -323,6 +386,58 @@ public class MobileNurseActionController {
         Map<String, Object> response = new HashMap<>();
         response.put("status", true);
         response.put("data", data);
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/booking/complete")
+    @PreAuthorize("hasRole('NURSE')")
+    @Operation(summary = "Complete booking", description = "Marks an active booking as completed by providing final remarks.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Booking completed successfully", content = @Content(schema = @Schema(implementation = Map.class))),
+        @ApiResponse(responseCode = "400", description = "Invalid request payload or booking already completed"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized"),
+        @ApiResponse(responseCode = "403", description = "Forbidden"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
+    public ResponseEntity<Map<String, Object>> completeBooking(
+            @RequestBody Map<String, Object> body, Authentication authentication) {
+
+        String nurseMobile = (String) authentication.getPrincipal();
+        log.info("Mobile complete request received from nurse mobile: {}, payload: {}", nurseMobile, body);
+
+        Object bookingNoObj = body.get("booking_no");
+        if (bookingNoObj == null) {
+            bookingNoObj = body.get("bookingNo");
+        }
+
+        if (bookingNoObj == null || bookingNoObj.toString().trim().isEmpty()) {
+            return ResponseEntity.ok(Map.of(
+                    "status", false,
+                    "message", "Booking number is required."
+            ));
+        }
+
+        String bookingNo = bookingNoObj.toString().trim();
+        String remarks = (String) body.get("remarks");
+        if (remarks == null) {
+            remarks = "";
+        }
+
+        com.pronurse.booking.dto.CompleteBookingRequest request = new com.pronurse.booking.dto.CompleteBookingRequest();
+        request.setBookingId(bookingNo);
+        request.setRemarks(remarks);
+
+        bookingService.completeBookingService(nurseMobile, request);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("status", true);
+        response.put("message", "Booking completed successfully.");
+        response.put("data", Map.of(
+                "booking_no", bookingNo,
+                "booking_status", "COMPLETED",
+                "completed_at", LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant().toString()
+        ));
 
         return ResponseEntity.ok(response);
     }

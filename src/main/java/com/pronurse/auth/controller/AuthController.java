@@ -305,6 +305,27 @@ public class AuthController {
     /**
      * Step 3: Silent Access Token Refresh using HttpOnly cookie rotation
      */
+    @Operation(
+            summary = "Step 3: Silent Access Token Refresh",
+            description = "Silent Access Token Refresh using HttpOnly cookie rotation. Validates refresh token and returns a new access token."
+    )
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "Token refreshed successfully",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ApiResponse.class)
+                    )
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "401",
+                    description = "Session expired or invalid refresh token",
+                    content = @Content(
+                            mediaType = "application/json"
+                    )
+            )
+    })
     @PostMapping("/refresh")
     public ResponseEntity<ApiResponse<AuthResponse>> refreshToken(
             @CookieValue(name = "refreshToken", required = false) String refreshToken) {
@@ -357,6 +378,20 @@ public class AuthController {
     /**
      * Step 4: Logout and Session Invalidation
      */
+    @Operation(
+            summary = "Step 4: Logout and Session Invalidation",
+            description = "Logs out the user and invalidates the session by removing the refresh token from the database and clearing cookies."
+    )
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "Logged out successfully",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ApiResponse.class)
+                    )
+            )
+    })
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse<String>> logout(
             @CookieValue(name = "refreshToken", required = false) String refreshToken) {

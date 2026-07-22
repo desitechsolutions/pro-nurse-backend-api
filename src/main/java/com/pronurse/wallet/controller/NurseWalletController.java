@@ -3,6 +3,11 @@ package com.pronurse.wallet.controller;
 import com.pronurse.common.payload.ApiResponse;
 import com.pronurse.wallet.dto.NurseWalletSummary;
 import com.pronurse.wallet.service.WalletService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -16,6 +21,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/nurse/wallet")
 @Tag(name = "12. Nurse Wallet Management", description = "Manage nurse wallet balances, earnings, and withdrawal requests")
+@SecurityRequirement(name = "Bearer Authentication")
 @RequiredArgsConstructor
 public class NurseWalletController {
 
@@ -26,6 +32,14 @@ public class NurseWalletController {
      */
     @GetMapping("/summary")
     @PreAuthorize("hasRole('NURSE')")
+    @Operation(summary = "Get wallet summary", description = "Retrieves real-time operational wallet balances, earnings history, and transactions.")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Nurse practitioner ledger portfolio data statements generated cleanly",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthorized access"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden access"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     public ResponseEntity<ApiResponse<NurseWalletSummary>> getMyEarnings(Authentication authentication) {
         String nurseMobile = (String) authentication.getPrincipal();
         NurseWalletSummary currentLedger = walletService.getNurseWalletDashboard(nurseMobile);
@@ -39,6 +53,15 @@ public class NurseWalletController {
 
     @PostMapping("/withdraw")
     @PreAuthorize("hasRole('NURSE')")
+    @Operation(summary = "Request withdrawal", description = "Submits a request to withdraw a specific amount from the nurse wallet.")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Payout request submitted for admin review",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid request or insufficient funds"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthorized access"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden access"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     public ResponseEntity<ApiResponse<Void>> requestWithdrawal(
             Authentication authentication,
             @RequestBody Map<String, BigDecimal> requestBody) {

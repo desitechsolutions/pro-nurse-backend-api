@@ -1,8 +1,16 @@
 package com.pronurse.common.payload;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
+@Schema(description = "Generic API Response wrapper")
 public class ApiResponse<T> {
+    @Schema(description = "Indicating whether the request was processed successfully", example = "true")
     private boolean success;
+
+    @Schema(description = "Response message detail", example = "Request processed successfully")
     private String message;
+
+    @Schema(description = "Optional response payload data object")
     private T data;
 
     public ApiResponse() {}

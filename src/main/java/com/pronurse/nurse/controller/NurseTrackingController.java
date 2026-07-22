@@ -7,6 +7,11 @@ import com.pronurse.nurse.dto.LocationUpdateRequest;
 import com.pronurse.nurse.entity.NurseProfile;
 import com.pronurse.nurse.repository.NurseProfileRepository;
 import com.pronurse.nurse.service.NurseProfileService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +31,7 @@ import org.springframework.web.bind.annotation.*;
         name = "05. Nurse Tracking",
         description = "Nurse tracking APIs"
 )
+@SecurityRequirement(name = "Bearer Authentication")
 @RequiredArgsConstructor
 public class NurseTrackingController {
 
@@ -42,6 +48,15 @@ public class NurseTrackingController {
      */
     @PostMapping("/update")
     @PreAuthorize("hasRole('NURSE')")
+    @Operation(summary = "Sync live tracking coordinates", description = "Updates the database with the nurse's current coordinates.")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "GPS location packet coordinates synchronized cleanly",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid input or validation error"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthorized access"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden access"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     public ResponseEntity<ApiResponse<Void>> syncLiveTrackingCoordinates(
             @Valid @RequestBody LocationUpdateRequest request,
             Authentication authentication) {
@@ -74,6 +89,15 @@ public class NurseTrackingController {
      */
     @GetMapping("/last-known/{nurseMobile}")
     @PreAuthorize("hasRole('PATIENT')")
+    @Operation(summary = "Get last known location", description = "Retrieves the last known coordinates of a nurse profile.")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Retrieved last known structural coordinates",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthorized access"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden access"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Nurse profile not found"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     public ResponseEntity<ApiResponse<LiveLocationPayload>> getLastKnownLocation(@PathVariable String nurseMobile) {
 
         NurseProfile profile = nurseProfileRepository.findByUserMobile(nurseMobile)

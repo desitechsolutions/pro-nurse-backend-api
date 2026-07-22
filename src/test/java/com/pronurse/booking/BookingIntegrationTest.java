@@ -184,7 +184,7 @@ class BookingIntegrationTest {
         assignment = assignmentRepository.save(assignment);
 
         // Nurse accepts offer using mobile controller endpoint
-        String acceptBody = "{\"booking_id\":" + booking.getId() + ",\"nurse_id\":" + nurseUser.getId() + "}";
+        String acceptBody = "{\"booking_no\":\"" + booking.getBookingNo() + "\",\"nurse_id\":" + nurseUser.getId() + "}";
         mockMvc.perform(post("/api/nurse/booking/accept")
                         .header("Authorization", "Bearer " + nurseToken)
                         .contentType(MediaType.APPLICATION_JSON)

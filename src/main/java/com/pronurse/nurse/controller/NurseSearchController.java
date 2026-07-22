@@ -10,6 +10,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -60,48 +62,20 @@ public class NurseSearchController {
                 - Find highly rated nurses: `?minRating=4.5`
                 - Find Hindi-speaking nurses: `?language=Hindi`
                 - Find nurses on duty: `?onDutyOnly=true`
-                """,
-            responses = {
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                            responseCode = "200",
-                            description = "Nurses found successfully",
-                            content = @Content(
-                                    mediaType = "application/json",
-                                    examples = @ExampleObject(
-                                            value = """
-                                                    {
-                                                      "success": true,
-                                                      "message": "Found 5 nurses matching criteria",
-                                                      "data": {
-                                                        "content": [
-                                                          {
-                                                            "nurseId": "NUR-001",
-                                                            "name": "Jane Smith",
-                                                            "gender": "Female",
-                                                            "qualification": "GNM",
-                                                            "experience": "5 Years",
-                                                            "specialization": "Post Surgery Care",
-                                                            "languages": "Hindi, English",
-                                                            "profileImage": "/api/files/profile-image/1",
-                                                            "averageRating": 4.5,
-                                                            "totalReviews": 25,
-                                                            "isOnDuty": true,
-                                                            "distanceKm": 2.5,
-                                                            "verificationStatus": "Approved"
-                                                          }
-                                                        ],
-                                                        "totalElements": 5,
-                                                        "totalPages": 1,
-                                                        "size": 20,
-                                                        "number": 0
-                                                      }
-                                                    }
-                                                    """
-                                    )
-                            )
-                    )
-            }
+                """
     )
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "Nurses found successfully",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = com.pronurse.nurse.dto.NurseSearchResponse.class)
+                    )
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid request parameters"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     @GetMapping("/search")
     public ResponseEntity<com.pronurse.nurse.dto.NurseSearchResponse> searchNurses(
             @Parameter(description = "Keyword search") @RequestParam(required = false) String keyword,
