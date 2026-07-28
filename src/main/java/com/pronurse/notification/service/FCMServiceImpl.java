@@ -259,6 +259,7 @@ public class FCMServiceImpl implements FCMService {
             case "PAYMENT" -> prefs.getPaymentAlerts();
             case "REVIEW" -> prefs.getReviewAlerts();
             case "PROMOTIONAL" -> prefs.getPromotionalAlerts();
+            case "ONBOARDING" -> true; // Onboarding alerts are always sent — nurses must receive these
             default -> true;
         };
     }

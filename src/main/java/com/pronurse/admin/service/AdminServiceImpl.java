@@ -10,6 +10,8 @@ import com.pronurse.catalog.repository.MedicalServiceRepository;
 import com.pronurse.common.exception.ApplicationException;
 import com.pronurse.nurse.entity.NurseProfile;
 import com.pronurse.nurse.repository.NurseProfileRepository;
+import com.pronurse.onboarding.enums.DocumentStatus;
+import com.pronurse.onboarding.repository.NurseDocumentRepository;
 import com.pronurse.review.repository.NurseReviewRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,6 +34,7 @@ public class AdminServiceImpl implements AdminService {
     private final MedicalServiceRepository medicalServiceRepository;
     private final NurseReviewRepository reviewRepository;
     private final UserRepository userRepository;
+    private final NurseDocumentRepository nurseDocumentRepository;
 
     // --- FIXED: Added missing implementation method to support /api/admin/me dashboard hooks ---
     @Override
@@ -112,21 +115,27 @@ public class AdminServiceImpl implements AdminService {
                 ? nurseProfileRepository.findByVerificationStatus(status, pageable)
                 : nurseProfileRepository.findAll(pageable);
 
-        return entities.map(profile -> AdminNurseSummaryResponse.builder()
-                .id(profile.getId())
-                .nurseId(profile.getNurseId())
-                .name(profile.getUser().getName())
-                .mobile(profile.getUser().getMobile())
-                .email(profile.getUser().getEmail())
-                .qualification(profile.getQualification())
-                .specialization(profile.getSpecialization())
-                .registrationNumber(profile.getRegistrationNumber())
-                .isVerified(profile.isVerified())
-                .isOnDuty(profile.isOnDuty())
-                .verificationStatus(profile.getVerificationStatus())
-                .averageRating(profile.getAverageRating())
-                .createdAt(profile.getCreatedAt())
-                .build());
+        return entities.map(profile -> {
+            long pendingDocCount = nurseDocumentRepository
+                    .countByNurseProfileIdAndDocumentStatus(profile.getId(), DocumentStatus.PENDING);
+            return AdminNurseSummaryResponse.builder()
+                    .id(profile.getId())
+                    .nurseId(profile.getNurseId())
+                    .name(profile.getUser().getName())
+                    .mobile(profile.getUser().getMobile())
+                    .email(profile.getUser().getEmail())
+                    .qualification(profile.getQualification())
+                    .specialization(profile.getSpecialization())
+                    .registrationNumber(profile.getRegistrationNumber())
+                    .isVerified(profile.isVerified())
+                    .isOnDuty(profile.isOnDuty())
+                    .verificationStatus(profile.getVerificationStatus())
+                    .averageRating(profile.getAverageRating())
+                    .onboardingStatus(profile.getOnboardingStatus())
+                    .pendingDocumentCount(pendingDocCount)
+                    .createdAt(profile.getCreatedAt())
+                    .build();
+        });
     }
 
     @Override

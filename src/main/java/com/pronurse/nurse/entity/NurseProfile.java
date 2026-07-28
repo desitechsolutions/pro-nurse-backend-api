@@ -3,6 +3,7 @@ package com.pronurse.nurse.entity;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.pronurse.auth.entity.User;
 import com.pronurse.enums.Gender;
+import com.pronurse.onboarding.enums.OnboardingStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -71,6 +72,19 @@ public class NurseProfile {
     @Column(length = 30)
     @Builder.Default
     private String verificationStatus = "Pending";
+
+    /**
+     * Structured onboarding lifecycle status backed by an enum.
+     * Drives the document upload and review state machine.
+     *
+     * NOTE: This coexists with {@code verificationStatus} (plain String) for backward
+     * compatibility. The service layer syncs both fields only at ONBOARDING_COMPLETED:
+     *   verificationStatus = "Approved", isVerified = true, isOnDuty = true.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "onboarding_status", length = 50)
+    @Builder.Default
+    private OnboardingStatus onboardingStatus = OnboardingStatus.DRAFT;
 
     private String rejectReason;
     private String verifiedBy;

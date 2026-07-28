@@ -1,6 +1,7 @@
 package com.pronurse.nurse.dto;
 
 import com.pronurse.enums.Gender;
+import com.pronurse.onboarding.enums.OnboardingStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Data;
@@ -67,4 +68,7 @@ public class NurseProfileResponse {
 
     @Schema(description = "Base consultation fee per visit session", example = "500.00")
     private java.math.BigDecimal consultationFee;
+
+    @Schema(description = "Structured onboarding lifecycle status", example = "UNDER_REVIEW")
+    private OnboardingStatus onboardingStatus;
 }

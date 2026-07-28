@@ -1,6 +1,8 @@
 package com.pronurse.nurse.repository;
 
 import com.pronurse.nurse.entity.NurseProfile;
+import com.pronurse.onboarding.enums.OnboardingStatus;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -31,13 +33,13 @@ public interface NurseProfileRepository extends JpaRepository<NurseProfile, Long
     );
 
     @Query("SELECT np FROM NurseProfile np JOIN FETCH np.user u " +
-           "WHERE np.isVerified = true AND np.verificationStatus = 'Approved' " +
-           "AND (:city IS NULL OR LOWER(np.city) = LOWER(:city)) " +
-           "AND (:gender IS NULL OR np.gender = :gender) " +
-           "AND (:rating IS NULL OR np.averageRating >= :rating) " +
-           "AND (:keyword IS NULL OR LOWER(u.name) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
-           "    OR LOWER(np.specialization) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
-           "    OR LOWER(np.qualification) LIKE LOWER(CONCAT('%', :keyword, '%')))")
+            "WHERE np.isVerified = true AND np.verificationStatus = 'Approved' " +
+            "AND (CAST(:city AS string) IS NULL OR LOWER(np.city) = LOWER(CAST(:city AS string))) " +
+            "AND (:gender IS NULL OR np.gender = :gender) " +
+            "AND (:rating IS NULL OR np.averageRating >= :rating) " +
+            "AND (CAST(:keyword AS string) IS NULL OR LOWER(u.name) LIKE LOWER(CONCAT('%', CAST(:keyword AS string), '%')) " +
+            "    OR LOWER(np.specialization) LIKE LOWER(CONCAT('%', CAST(:keyword AS string), '%')) " +
+            "    OR LOWER(np.qualification) LIKE LOWER(CONCAT('%', CAST(:keyword AS string), '%')))")
     List<NurseProfile> searchNursesMobile(
             @Param("keyword") String keyword,
             @Param("city") String city,
@@ -55,6 +57,12 @@ public interface NurseProfileRepository extends JpaRepository<NurseProfile, Long
             String verificationStatus,
             org.springframework.data.domain.Pageable pageable
     );
+
+    /**
+     * Find nurse profiles by structured onboarding status (new enum-backed field).
+     * Used by admin onboarding management panel.
+     */
+    Page<NurseProfile> findByOnboardingStatus(OnboardingStatus onboardingStatus, Pageable pageable);
 
     @org.springframework.data.jpa.repository.Modifying
     @org.springframework.data.jpa.repository.Query(

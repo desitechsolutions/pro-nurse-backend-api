@@ -34,7 +34,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/nurse")
-@Tag(name = "15. Mobile Nurse Actions", description = "Nurse operations mapped specifically for the Flutter client workflows")
+@Tag(name = "07. Mobile Nurse Actions", description = "Nurse operations mapped specifically for the Flutter client workflows")
 @SecurityRequirement(name = "Bearer Authentication")
 @RequiredArgsConstructor
 @Slf4j

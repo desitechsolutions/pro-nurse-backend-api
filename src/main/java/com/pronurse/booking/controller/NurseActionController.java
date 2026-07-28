@@ -21,7 +21,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/booking")
 @Tag(
-        name = "07. Nurse Booking Actions",
+        name = "15. Nurse Booking Actions for Web App",
         description = "Nurse booking action APIs for accepting, rejecting, completing bookings and fetching dashboard data")
 @SecurityRequirement(name = "Bearer Authentication")
 @RequiredArgsConstructor

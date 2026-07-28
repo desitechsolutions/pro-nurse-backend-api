@@ -1,5 +1,6 @@
 package com.pronurse.admin.dto;
 
+import com.pronurse.onboarding.enums.OnboardingStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Data;
@@ -44,6 +45,12 @@ public class AdminNurseSummaryResponse {
 
     @Schema(description = "Average rating received from patients", example = "4.8")
     private double averageRating;
+
+    @Schema(description = "Structured onboarding lifecycle status", example = "UNDER_REVIEW")
+    private OnboardingStatus onboardingStatus;
+
+    @Schema(description = "Number of onboarding documents currently awaiting admin review", example = "2")
+    private long pendingDocumentCount;
 
     @Schema(description = "Timestamp when the nurse account was created", example = "2026-07-15T10:00:00")
     private LocalDateTime createdAt;

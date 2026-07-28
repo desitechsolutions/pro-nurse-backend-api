@@ -114,6 +114,7 @@ public class NurseProfileServiceImpl implements NurseProfileService {
                 .verificationStatus(profile.getVerificationStatus())
                 .city(profile.getCity())
                 .consultationFee(profile.getConsultationFee())
+                .onboardingStatus(profile.getOnboardingStatus())
                 .build();
     }
 
