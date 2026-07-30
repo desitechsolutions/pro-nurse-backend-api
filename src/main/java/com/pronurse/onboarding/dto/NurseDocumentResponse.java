@@ -60,9 +60,10 @@ public class NurseDocumentResponse {
     private LocalDateTime uploadedAt;
 
     /**
-     * Pre-built download URL for this document.
+     * Pre-built URL to view/stream this document.
+     * Nurse: /api/nurse/onboarding/documents/{id}/view  (own docs only)
      * Admin: /api/admin/onboarding/documents/{id}/download
      */
-    @Schema(description = "Direct download URL for this document (admin-gated)")
+    @Schema(description = "Direct URL to view this document inline (nurse-facing)")
     private String downloadUrl;
 }

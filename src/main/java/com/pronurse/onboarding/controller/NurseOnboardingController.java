@@ -1,6 +1,9 @@
 package com.pronurse.onboarding.controller;
 
+import com.pronurse.common.exception.ApplicationException;
 import com.pronurse.common.payload.ApiResponse;
+import com.pronurse.nurse.entity.NurseProfile;
+import com.pronurse.nurse.repository.NurseProfileRepository;
 import com.pronurse.onboarding.dto.NurseDocumentResponse;
 import com.pronurse.onboarding.dto.OnboardingStatusResponse;
 import com.pronurse.onboarding.enums.DocumentType;
@@ -13,6 +16,11 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -20,20 +28,29 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
 @RestController
 @RequestMapping("/api/nurse/onboarding")
 @Tag(
         name = "14. Nurse Onboarding",
         description = "Nurse onboarding document upload and status APIs. " +
                       "Allows nurses to upload required documents, check review status, " +
-                      "replace rejected documents, and submit for admin review."
+                      "replace rejected documents, submit for admin review, and view uploaded documents."
 )
 @SecurityRequirement(name = "Bearer Authentication")
 @PreAuthorize("hasRole('NURSE')")
 @RequiredArgsConstructor
+@Slf4j
 public class NurseOnboardingController {
 
     private final OnboardingService onboardingService;
+    private final NurseProfileRepository nurseProfileRepository;
+
+    @Value("${spring.file.upload.dir:uploads}")
+    private String uploadDir;
 
     /**
      * Upload a new onboarding document.
@@ -162,5 +179,84 @@ public class NurseOnboardingController {
 
         return ResponseEntity.ok(new ApiResponse<>(
                 true, "Onboarding status retrieved successfully.", response));
+    }
+
+    /**
+     * View / download a specific uploaded document.
+     * The nurse can only access documents that belong to their own profile.
+     */
+    @Operation(
+            summary = "View uploaded document",
+            description = "Stream and view a previously uploaded onboarding document. " +
+                          "Only the nurse who uploaded the document can access it. " +
+                          "PDF and image files will open inline in the mobile viewer. " +
+                          "The document ID (docId) is found in the documents[] array from the /status response."
+    )
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200",
+                    description = "Document file streamed successfully",
+                    content = @Content(mediaType = MediaType.APPLICATION_OCTET_STREAM_VALUE)),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+                    description = "This document does not belong to the authenticated nurse"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404",
+                    description = "Document not found or file missing on disk")
+    })
+    @GetMapping("/documents/{docId}/view")
+    public ResponseEntity<?> viewDocument(
+            @Parameter(description = "Document database ID from the /status response", example = "42")
+            @PathVariable Long docId,
+            Authentication authentication) {
+
+        String mobile = (String) authentication.getPrincipal();
+
+        try {
+            // Load document metadata from DB
+            NurseDocumentResponse doc = onboardingService.getDocumentById(docId);
+
+            // Ownership check — nurse can only view their own documents
+            NurseProfile profile = nurseProfileRepository.findByUserMobile(mobile)
+                    .orElseThrow(() -> new ApplicationException("Nurse profile not found."));
+
+            if (!doc.getNurseProfileId().equals(profile.getId())) {
+                throw new ApplicationException("Access denied: This document does not belong to your profile.");
+            }
+
+            // Build path from DB values — no user-controlled input in path
+            String folder = "documents/nurses/" + doc.getNurseProfileId();
+            Path filePath = Paths.get(uploadDir, folder, doc.getFileName())
+                    .toAbsolutePath()
+                    .normalize();
+
+            Resource resource = new UrlResource(filePath.toUri());
+
+            if (!resource.exists() || !resource.isReadable()) {
+                log.warn("Document file not found on disk for docId={}: {}", docId, filePath);
+                return ResponseEntity.notFound().build();
+            }
+
+            // Detect content type (PDF, image, etc.) for correct browser/app rendering
+            String contentType = Files.probeContentType(filePath);
+            if (contentType == null) {
+                contentType = MediaType.APPLICATION_OCTET_STREAM_VALUE;
+            }
+
+            log.info("Nurse {} viewing document ID {} ({})", mobile, docId, doc.getDocumentType());
+
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType(contentType))
+                    // inline = open in viewer; attachment = force download
+                    .header(HttpHeaders.CONTENT_DISPOSITION,
+                            "inline; filename=\"" + doc.getOriginalName() + "\"")
+                    .body(resource);
+
+        } catch (ApplicationException e) {
+            log.warn("Document view denied for nurse {}: {}", mobile, e.getMessage());
+            return ResponseEntity.status(403)
+                    .body(new ApiResponse<>(false, e.getMessage(), null));
+        } catch (Exception e) {
+            log.error("Failed to stream document ID {} for nurse {}: {}", docId, mobile, e.getMessage());
+            return ResponseEntity.internalServerError()
+                    .body(new ApiResponse<>(false, "File retrieval failed: " + e.getMessage(), null));
+        }
     }
 }

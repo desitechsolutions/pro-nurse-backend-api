@@ -66,12 +66,15 @@ public class OnboardingServiceImpl implements OnboardingService {
         nurseDocumentRepository
                 .findTopByNurseProfileIdAndDocumentTypeOrderByVersionDesc(profile.getId(), documentType)
                 .ifPresent(existing -> {
-                    if (existing.getDocumentStatus() == DocumentStatus.PENDING ||
-                            existing.getDocumentStatus() == DocumentStatus.APPROVED) {
+                    if (existing.getDocumentStatus() == DocumentStatus.PENDING) {
                         throw new ApplicationException(
-                                "A document of type '" + documentType.getReadableName() +
-                                "' has already been uploaded and is " + existing.getDocumentStatus() +
-                                ". Use the replace endpoint if you need to resubmit a rejected document.");
+                                "Your '" + documentType.getReadableName() + "' document is already uploaded and is " +
+                                "currently awaiting admin review. No action needed — you will be notified once it is reviewed.");
+                    }
+                    if (existing.getDocumentStatus() == DocumentStatus.APPROVED) {
+                        throw new ApplicationException(
+                                "Your '" + documentType.getReadableName() + "' document has already been approved. " +
+                                "No further action is required for this document type.");
                     }
                 });
 
@@ -516,7 +519,7 @@ public class OnboardingServiceImpl implements OnboardingService {
                 .reviewedBy(doc.getReviewedBy())
                 .reviewedAt(doc.getReviewedAt())
                 .uploadedAt(doc.getUploadedAt())
-                .downloadUrl("/api/admin/onboarding/documents/" + doc.getId() + "/download")
+                .downloadUrl("/api/nurse/onboarding/documents/" + doc.getId() + "/view")
                 .build();
     }
 }

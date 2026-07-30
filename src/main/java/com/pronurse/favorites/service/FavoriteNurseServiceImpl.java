@@ -119,7 +119,7 @@ public class FavoriteNurseServiceImpl implements FavoriteNurseService {
                 .yearsOfExperience(profile != null && profile.getExperience() != null
                         ? parseExperienceYears(profile.getExperience()) : null)
                 .profileImageUrl(profile != null && profile.getProfileImage() != null
-                        ? "/api/files/download/" + profile.getProfileImage() : null)
+                        ? "/api/files/profile-image/" + nurse.getId() : null)
                 .notes(favorite.getNotes())
                 .addedAt(favorite.getCreatedAt())
                 .build();

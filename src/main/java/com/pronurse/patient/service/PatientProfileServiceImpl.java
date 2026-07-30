@@ -109,7 +109,9 @@ public class PatientProfileServiceImpl implements PatientProfileService {
                 .dob(profile.getDob())
                 .bloodGroup(profile.getBloodGroup())
                 .address(profile.getAddress())
-                .profileImage(profile.getProfileImage())
+                .profileImage(profile.getProfileImage() != null
+                        ? "/api/files/profile-image/" + profile.getUser().getId()
+                        : null)
                 .medicalReport(profile.getMedicalReportPath())
                 .latitude(profile.getLatitude())
                 .longitude(profile.getLongitude())

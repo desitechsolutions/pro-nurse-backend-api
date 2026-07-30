@@ -125,7 +125,9 @@ public class NurseSearchController {
                     return com.pronurse.nurse.dto.NurseSearchItem.builder()
                             .id(np.getUser().getId())
                             .name(np.getUser().getName())
-                            .profile_image(np.getProfileImage() != null ? np.getProfileImage() : "https://example.com/uploads/nurses/default.jpg")
+                            .profile_image(np.getProfileImage() != null
+                                    ? "/api/files/profile-image/" + np.getUser().getId()
+                                    : null)
                             .gender(np.getGender() != null ? np.getGender().name() : null)
                             .experience(expYears)
                             .qualification(np.getQualification())

@@ -107,7 +107,9 @@ public class NurseProfileServiceImpl implements NurseProfileService {
                 .specialization(profile.getSpecialization())
                 .languages(profile.getLanguages())
                 .address(profile.getAddress())
-                .profileImage(profile.getProfileImage())
+                .profileImage(profile.getProfileImage() != null
+                        ? "/api/files/profile-image/" + profile.getUser().getId()
+                        : null)
                 .registrationNumber(profile.getRegistrationNumber())
                 .averageRating(profile.getAverageRating())
                 .isOnDuty(profile.isOnDuty())
