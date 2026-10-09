@@ -24,7 +24,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/history")
 @RequiredArgsConstructor
-@Tag(name = "10. Booking History", description = "Booking history and filtering")
+@Tag(name = "11. Booking History & Filtering", description = "Paginated booking history with multi-attribute filtering, status filters, and CSV/PDF report exports for patients and nurses.")
 @SecurityRequirement(name = "Bearer Authentication")
 public class BookingHistoryController {
 

@@ -33,12 +33,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/admin/onboarding")
-@Tag(
-        name = "15. Admin Onboarding Management",
-        description = "Admin endpoints for reviewing nurse onboarding documents. " +
-                      "Supports per-document approval/rejection with comments, " +
-                      "full audit history, secure file download, and final onboarding completion."
-)
+@Tag(name = "17. Admin Onboarding Review", description = "Administrative verification workflow: review uploaded practitioner documents (approve, reject with notes), audit logs, and finalize onboarding.")
 @SecurityRequirement(name = "Bearer Authentication")
 @PreAuthorize("hasRole('ADMIN')")
 @RequiredArgsConstructor

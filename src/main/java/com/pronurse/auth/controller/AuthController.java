@@ -26,15 +26,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Duration;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
-@Tag(name = "01. Authentication", description = """
-    Authentication and authorization endpoints for user registration, login, and session management.
-    
-    **Flow:**
-    1. Send OTP → 2. Verify OTP & Get Tokens → 3. Use Access Token → 4. Refresh when expired → 5. Logout
-    """)
+@Tag(name = "01. Authentication & Security", description = "User registration, mobile OTP verification, password login, JWT token rotation, and logout operations.")
 public class AuthController {
 
     private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
@@ -328,11 +324,20 @@ public class AuthController {
     })
     @PostMapping("/refresh")
     public ResponseEntity<ApiResponse<AuthResponse>> refreshToken(
-            @CookieValue(name = "refreshToken", required = false) String refreshToken) {
+            @CookieValue(name = "refreshToken", required = false) String cookieRefreshToken,
+            @RequestBody(required = false) Map<String, Object> body) {
 
         try {
-            if (refreshToken == null) {
-                throw new ApplicationException("Refresh token missing from cookies");
+            String refreshToken = cookieRefreshToken;
+            if ((refreshToken == null || refreshToken.isBlank()) && body != null) {
+                Object tokenObj = body.get("refreshToken") != null ? body.get("refreshToken") : body.get("token");
+                if (tokenObj != null) {
+                    refreshToken = tokenObj.toString().trim();
+                }
+            }
+
+            if (refreshToken == null || refreshToken.isBlank()) {
+                throw new ApplicationException("Refresh token is required (provide in Cookie or JSON body)");
             }
 
             // Rotate the refresh token in database
@@ -350,7 +355,10 @@ public class AuthController {
                     .maxAge(Duration.ofDays(7))
                     .build();
 
-            AuthResponse authResponse = new AuthResponse(newAccessToken, user.getRole().name());
+            AuthResponse authResponse = new AuthResponse(newAccessToken, user.getRole().name(), newTokenEntity.getToken());
+            authResponse.setUserId(user.getId());
+            authResponse.setName(user.getName());
+            authResponse.setMobile(user.getMobile());
             logger.info("Token rotation completed for user: {}", user.getMobile());
 
             return ResponseEntity.ok()
@@ -394,9 +402,18 @@ public class AuthController {
     })
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse<String>> logout(
-            @CookieValue(name = "refreshToken", required = false) String refreshToken) {
+            @CookieValue(name = "refreshToken", required = false) String cookieRefreshToken,
+            @RequestBody(required = false) Map<String, Object> body) {
 
-        if (refreshToken != null) {
+        String refreshToken = cookieRefreshToken;
+        if ((refreshToken == null || refreshToken.isBlank()) && body != null) {
+            Object tokenObj = body.get("refreshToken") != null ? body.get("refreshToken") : body.get("token");
+            if (tokenObj != null) {
+                refreshToken = tokenObj.toString().trim();
+            }
+        }
+
+        if (refreshToken != null && !refreshToken.isBlank()) {
             refreshTokenService.deleteByToken(refreshToken);
             logger.info("Successfully dropped session token from DB.");
         }

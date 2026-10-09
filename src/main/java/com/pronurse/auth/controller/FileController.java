@@ -26,13 +26,13 @@ import java.nio.file.Paths;
 
 @RestController
 @RequestMapping("/api/files")
-@Tag(name = "18. File Management", description = "Secure file download operations for authorized users")
+@Tag(name = "21. Secure File & Document Management", description = "Secure authenticated streaming and inline viewing of prescriptions, profile avatars, medical reports, and uploaded documents.")
 @SecurityRequirement(name = "Bearer Authentication")
 public class FileController {
 
     private static final Logger logger = LoggerFactory.getLogger(FileController.class);
 
-    @Value("${spring.file.upload.dir:static/uploads/}")
+    @Value("${spring.file.upload.dir:uploads}")
     private String uploadDir;
 
     /**

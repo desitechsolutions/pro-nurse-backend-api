@@ -18,11 +18,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/notifications")
 @RequiredArgsConstructor
 @Slf4j
-@Tag(name = "15. Push Notifications", description = "FCM push notification management")
+@Tag(name = "20. Push Notifications & Preferences", description = "FCM device token registration, notification preferences configuration, and token cleanup.")
 @SecurityRequirement(name = "Bearer Authentication")
 public class NotificationController {
 
@@ -48,6 +50,32 @@ public class NotificationController {
         return ResponseEntity.ok(ApiResponse.<Void>builder()
                 .success(true)
                 .message("Device token registered successfully")
+                .build());
+    }
+
+    @PostMapping("/test-push")
+    @Operation(summary = "Send test push notification", 
+               description = "Dispatches a live test push notification to all active FCM device tokens registered by the authenticated user")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Test push notification dispatched successfully",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthorized access"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
+    })
+    public ResponseEntity<ApiResponse<Void>> testPushNotification(
+            @RequestParam(defaultValue = "ProNurse Live Test") String title,
+            @RequestParam(defaultValue = "This is a live test notification from ProNurse API.") String body,
+            Authentication authentication) {
+
+        String mobile = authentication.getName();
+        fcmService.sendNotification(mobile, title, body, Map.of(
+                "type", "TEST",
+                "timestamp", String.valueOf(System.currentTimeMillis())
+        ));
+
+        return ResponseEntity.ok(ApiResponse.<Void>builder()
+                .success(true)
+                .message("Test push notification dispatched to " + mobile)
                 .build());
     }
 
@@ -140,5 +168,3 @@ public class NotificationController {
                 .build());
     }
 }
-
-

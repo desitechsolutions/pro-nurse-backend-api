@@ -15,9 +15,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/payment")
-@Tag(
-        name = "08. Payment Processing",
-        description = "Payment processing APIs for creating Razorpay orders and verifying payments")
+@Tag(name = "09. Payment Gateway (Razorpay)", description = "Checkout order creation, Razorpay webhook signature verification, and automated refund tracking.")
 @SecurityRequirement(name = "Bearer Authentication")
 public class PaymentController {
 
@@ -29,7 +27,20 @@ public class PaymentController {
 
     @PostMapping("/create-order")
     @PreAuthorize("hasRole('PATIENT')")
-    @Operation(summary = "Create payment order", description = "Creates a Razorpay payment order for the specified booking ID.")
+    @Operation(
+        summary = "Create Razorpay payment order",
+        description = "Creates a Razorpay checkout payment order token for the specified booking number.",
+        requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            description = "Booking ID reference payload",
+            required = true,
+            content = @Content(
+                mediaType = "application/json",
+                examples = @io.swagger.v3.oas.annotations.media.ExampleObject(
+                    value = "{\n  \"bookingId\": \"PN-TEST-BOOK-001\"\n}"
+                )
+            )
+        )
+    )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Razorpay order created successfully", content = @Content(schema = @Schema(implementation = com.pronurse.common.payload.ApiResponse.class))),
         @ApiResponse(responseCode = "400", description = "Invalid booking ID or payment setup failure"),
@@ -45,7 +56,20 @@ public class PaymentController {
 
     @PostMapping("/verify")
     @PreAuthorize("hasRole('PATIENT')")
-    @Operation(summary = "Verify checkout payment", description = "Verifies Razorpay payment signature and updates the booking payment status.")
+    @Operation(
+        summary = "Verify Razorpay checkout payment",
+        description = "Verifies the cryptographic payment signature returned by the Razorpay mobile/web checkout SDK and updates booking payment status to PAID.",
+        requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            description = "Razorpay payment verification signature tokens",
+            required = true,
+            content = @Content(
+                mediaType = "application/json",
+                examples = @io.swagger.v3.oas.annotations.media.ExampleObject(
+                    value = "{\n  \"bookingId\": \"PN-TEST-BOOK-001\",\n  \"orderId\": \"order_DBJOWzybf0sJbb\",\n  \"paymentId\": \"pay_29QQoUBcxrAMg6\",\n  \"signature\": \"9ef4dffbfdbf42f718f7176462c2f32a747d83d020d57e90c75edd4dced6aa29\"\n}"
+                )
+            )
+        )
+    )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Payment verified successfully", content = @Content(schema = @Schema(implementation = com.pronurse.common.payload.ApiResponse.class))),
         @ApiResponse(responseCode = "400", description = "Invalid payment signature or verification failure"),

@@ -9,13 +9,13 @@ import com.pronurse.patient.repository.PatientProfileRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
@@ -34,26 +34,28 @@ import java.nio.file.Paths;
 @RequestMapping("/api/files")
 @RequiredArgsConstructor
 @Slf4j
-@Tag(name = "17. File Management", description = "File upload and download operations")
+@Tag(name = "21. Secure File & Document Management", description = "Secure authenticated streaming and inline viewing of prescriptions, profile avatars, medical reports, and uploaded documents.")
 @SecurityRequirement(name = "Bearer Authentication")
 public class FileDownloadController {
 
     private final BookingRepository bookingRepository;
     private final UserRepository userRepository;
     private final PatientProfileRepository patientProfileRepository;
-    private static final String UPLOAD_DIR = "uploads/";
+
+    @Value("${spring.file.upload.dir:uploads}")
+    private String uploadDir;
 
     @Operation(
-            summary = "Download Prescription File",
+            summary = "Download/View Prescription File",
             description = """
-                Downloads prescription file for a specific booking.
+                Downloads or inline-previews prescription file for a specific booking.
                 
                 **Access Control:**
                 - Patient who created the booking
                 - Nurse assigned to the booking
                 - Admin users
                 
-                **Returns:** PDF or image file
+                **Returns:** PDF or image file (inline stream)
                 """
     )
     @ApiResponses(value = {
@@ -91,17 +93,21 @@ public class FileDownloadController {
             throw new ApplicationException("No prescription file attached to this booking");
         }
 
-        return downloadFile(booking.getPrescriptionFilePath());
+        String filename = booking.getPrescriptionFilePath();
+        Path filePath = Paths.get(uploadDir, "prescriptions", filename).toAbsolutePath().normalize();
+        if (!Files.exists(filePath)) {
+            filePath = Paths.get(uploadDir, filename).toAbsolutePath().normalize();
+        }
+
+        return streamResource(filePath, filename);
     }
 
     @Operation(
-            summary = "Download Profile Image",
+            summary = "Download/View Profile Image",
             description = """
-                Downloads profile image for a user.
+                Streams profile avatar image for a user.
                 
-                **Access Control:**
-                - Own profile image (any authenticated user)
-                - Admin can download any profile image
+                **Access Control:** Any authenticated user can view the public avatar of an active platform user.
                 
                 **Returns:** Image file (JPEG, PNG, etc.)
                 """
@@ -120,20 +126,8 @@ public class FileDownloadController {
             @Parameter(description = "User ID") @PathVariable Long userId,
             Authentication authentication) {
 
-        String mobile = (String) authentication.getPrincipal();
-        User currentUser = userRepository.findByMobile(mobile)
-                .orElseThrow(() -> new ApplicationException("User not found"));
-
         User targetUser = userRepository.findById(userId)
                 .orElseThrow(() -> new ApplicationException("Target user not found"));
-
-        // Access control: own profile or admin
-        boolean isOwnProfile = currentUser.getId().equals(userId);
-        boolean isAdmin = currentUser.getRole().name().equals("ADMIN");
-
-        if (!isOwnProfile && !isAdmin) {
-            throw new ApplicationException("Unauthorized access to profile image");
-        }
 
         String imagePath = null;
         if (targetUser.getRole().name().equals("NURSE") && targetUser.getNurseProfile() != null) {
@@ -149,7 +143,79 @@ public class FileDownloadController {
             throw new ApplicationException("No profile image found");
         }
 
-        return downloadFile(imagePath);
+        Path filePath;
+        if (targetUser.getRole().name().equals("NURSE")) {
+            filePath = Paths.get(uploadDir, "profiles/nurses", imagePath).toAbsolutePath().normalize();
+        } else {
+            filePath = Paths.get(uploadDir, "profiles/patients", imagePath).toAbsolutePath().normalize();
+        }
+
+        if (!Files.exists(filePath)) {
+            filePath = Paths.get(uploadDir, imagePath).toAbsolutePath().normalize();
+        }
+
+        return streamResource(filePath, imagePath);
+    }
+
+    @Operation(
+            summary = "Download/View Patient Medical Report",
+            description = """
+                Streams and displays medical history report / prescription file for a patient.
+                
+                **Access Control:**
+                - Patient themselves
+                - Assigned nurse
+                - Admin users
+                
+                **Returns:** PDF or image file (inline stream)
+                """
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Medical report file retrieved successfully",
+                    content = @Content(mediaType = MediaType.APPLICATION_OCTET_STREAM_VALUE)),
+            @ApiResponse(responseCode = "400", description = "Invalid user ID or no report found"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized access"),
+            @ApiResponse(responseCode = "403", description = "Forbidden access"),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
+    @GetMapping("/medical-report/{patientUserId}")
+    @PreAuthorize("hasAnyRole('PATIENT', 'NURSE', 'ADMIN')")
+    public ResponseEntity<Resource> downloadMedicalReport(
+            @Parameter(description = "Patient User ID") @PathVariable Long patientUserId,
+            Authentication authentication) {
+
+        String mobile = (String) authentication.getPrincipal();
+        User currentUser = userRepository.findByMobile(mobile)
+                .orElseThrow(() -> new ApplicationException("User not found"));
+
+        User patientUser = userRepository.findById(patientUserId)
+                .orElseThrow(() -> new ApplicationException("Patient user not found"));
+
+        var patientProfile = patientProfileRepository.findByUserMobile(patientUser.getMobile())
+                .orElseThrow(() -> new ApplicationException("Patient profile not found"));
+
+        if (patientProfile.getMedicalReportPath() == null) {
+            throw new ApplicationException("No medical report file attached for this patient");
+        }
+
+        boolean isSelf = currentUser.getId().equals(patientUserId);
+        boolean isAdmin = currentUser.getRole().name().equals("ADMIN");
+        boolean isNurse = currentUser.getRole().name().equals("NURSE");
+
+        if (!isSelf && !isAdmin && !isNurse) {
+            throw new ApplicationException("Unauthorized access to patient medical report");
+        }
+
+        String filename = patientProfile.getMedicalReportPath();
+        Path filePath = Paths.get(uploadDir, "prescriptions/patients", filename).toAbsolutePath().normalize();
+        if (!Files.exists(filePath)) {
+            filePath = Paths.get(uploadDir, "prescriptions", filename).toAbsolutePath().normalize();
+            if (!Files.exists(filePath)) {
+                filePath = Paths.get(uploadDir, filename).toAbsolutePath().normalize();
+            }
+        }
+
+        return streamResource(filePath, filename);
     }
 
     @Operation(
@@ -174,20 +240,21 @@ public class FileDownloadController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Resource> downloadFile(
             @Parameter(description = "Filename to download") @PathVariable String filename) {
-        try {
-            // Prevent directory traversal attacks
-            if (filename.contains("..")) {
-                throw new ApplicationException("Invalid file path");
-            }
+        if (filename.contains("..")) {
+            throw new ApplicationException("Invalid file path");
+        }
+        Path filePath = Paths.get(uploadDir).resolve(filename).normalize();
+        return streamResource(filePath, filename);
+    }
 
-            Path filePath = Paths.get(UPLOAD_DIR).resolve(filename).normalize();
+    private ResponseEntity<Resource> streamResource(Path filePath, String originalFilename) {
+        try {
             Resource resource = new UrlResource(filePath.toUri());
 
             if (!resource.exists() || !resource.isReadable()) {
-                throw new ApplicationException("File not found or not readable: " + filename);
+                throw new ApplicationException("File not found or not readable: " + originalFilename);
             }
 
-            // Determine content type
             String contentType;
             try {
                 contentType = Files.probeContentType(filePath);
@@ -199,19 +266,19 @@ public class FileDownloadController {
                 contentType = MediaType.APPLICATION_OCTET_STREAM_VALUE;
             }
 
-            log.info("Downloading file: {} with content type: {}", filename, contentType);
+            log.info("Streaming file: {} with content type: {}", originalFilename, contentType);
 
             return ResponseEntity.ok()
                     .contentType(MediaType.parseMediaType(contentType))
                     .header(HttpHeaders.CONTENT_DISPOSITION,
-                            "attachment; filename=\"" + resource.getFilename() + "\"")
+                            "inline; filename=\"" + resource.getFilename() + "\"")
                     .body(resource);
 
+        } catch (ApplicationException e) {
+            throw e;
         } catch (Exception e) {
-            log.error("Error downloading file: {}", filename, e);
-            throw new ApplicationException("Error downloading file: " + e.getMessage());
+            log.error("Error streaming file: {}", originalFilename, e);
+            throw new ApplicationException("Error retrieving file: " + e.getMessage());
         }
     }
 }
-
-

@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/review")
-@Tag(name = "14. Patient Reviews", description = "Submit service feedback reviews post execution tracking")
+@Tag(name = "14. Patient Reviews & Feedback", description = "Post-service ratings and review submission for nurse practitioners.")
 @SecurityRequirement(name = "Bearer Authentication")
 @RequiredArgsConstructor
 public class PatientReviewController {

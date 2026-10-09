@@ -17,6 +17,8 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Map;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -149,6 +151,52 @@ class AuthenticationIntegrationTest {
         // Logout using cookie
         mockMvc.perform(post("/api/auth/logout")
                         .cookie(new jakarta.servlet.http.Cookie("refreshToken", refreshToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+    }
+
+    @Test
+    void testMobileJsonRefreshTokenRotationAndLogout() throws Exception {
+        User user = new User();
+        user.setMobile("9876543229");
+        user.setName("Mobile Test User");
+        user.setRole(Role.PATIENT);
+        userRepository.save(user);
+
+        OtpVerificationRequest verifyReq = new OtpVerificationRequest();
+        verifyReq.setMobile("9876543229");
+        verifyReq.setOtp("123456");
+        verifyReq.setRoleType(Role.PATIENT);
+
+        String loginResult = mockMvc.perform(post("/api/auth/otp/verify")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(verifyReq)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        String originalRefreshToken = objectMapper.readTree(loginResult).path("data").path("refreshToken").asText();
+        assertNotNull(originalRefreshToken);
+
+        // Mobile Client Refresh via JSON body (No Cookie)
+        Map<String, String> refreshReq = Map.of("refreshToken", originalRefreshToken);
+        String refreshResult = mockMvc.perform(post("/api/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(refreshReq)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.accessToken").exists())
+                .andExpect(jsonPath("$.data.refreshToken").exists())
+                .andReturn().getResponse().getContentAsString();
+
+        String rotatedRefreshToken = objectMapper.readTree(refreshResult).path("data").path("refreshToken").asText();
+        assertNotNull(rotatedRefreshToken);
+        assertNotEquals(originalRefreshToken, rotatedRefreshToken, "Refresh token must rotate");
+
+        // Mobile Client Logout via JSON body (No Cookie)
+        Map<String, String> logoutReq = Map.of("refreshToken", rotatedRefreshToken);
+        mockMvc.perform(post("/api/auth/logout")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(logoutReq)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
     }

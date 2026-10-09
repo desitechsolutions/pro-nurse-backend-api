@@ -26,9 +26,10 @@ import com.pronurse.booking.dto.BookingHistoryResponse;
 @RestController
 @RequestMapping("/api")
 @Tag(
-        name = "06. Patient Booking",
-        description = "Patient booking APIs for service catalog retrieval, booking creation, and history log access"
+        name = "06. Patient Booking & Dispatch",
+        description = "Patient booking APIs for service catalog retrieval, booking creation, prescription attachment, and active booking details."
 )
+@io.swagger.v3.oas.annotations.security.SecurityRequirement(name = "Bearer Authentication")
 @RequiredArgsConstructor
 public class PatientBookingController {
 
@@ -39,6 +40,10 @@ public class PatientBookingController {
             summary = "Get medical services catalog",
             description = "Retrieves the active hierarchical tree structure of all medical procedures, specialties, and baseline service fees."
     )
+    @io.swagger.v3.oas.annotations.responses.ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Medical service hierarchy retrieved successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     @GetMapping("/services")
     public ResponseEntity<com.pronurse.common.payload.ApiResponse<List<ServiceCatalogResponse>>> getServices() {
         return ResponseEntity.ok(new com.pronurse.common.payload.ApiResponse<>(true, "Fetched catalog successfully", catalogService.getActiveHierarchyTree()));
@@ -46,8 +51,15 @@ public class PatientBookingController {
 
     @Operation(
             summary = "Create service booking",
-            description = "Registers a new multi-item booking request under the active patient session credentials."
+            description = "Registers a new multi-item booking request under the active patient session credentials. Initiates chained dispatch to nearest available nurses."
     )
+    @io.swagger.v3.oas.annotations.responses.ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Booking created and registered in PENDING status"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Validation error, missing GPS coordinates, or invalid service item"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthorized"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden - PATIENT role required"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     @PostMapping("/booking/create")
     @PreAuthorize("hasRole('PATIENT')")
     public ResponseEntity<com.pronurse.common.payload.ApiResponse<Map<String, String>>> createBooking(
@@ -61,8 +73,15 @@ public class PatientBookingController {
 
     @Operation(
             summary = "Create service booking with prescription attachment",
-            description = "Registers a new booking request while attaching a physical prescription image document payload."
+            description = "Registers a new booking request while uploading an attached physical prescription image/PDF document."
     )
+    @io.swagger.v3.oas.annotations.responses.ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Booking created with prescription successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Validation error, file upload failure, or missing GPS coordinates"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthorized"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden - PATIENT role required"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     @PostMapping(value = "/booking/create-with-prescription", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasRole('PATIENT')")
     public ResponseEntity<com.pronurse.common.payload.ApiResponse<Map<String, String>>> createBookingWithFile(
@@ -80,6 +99,12 @@ public class PatientBookingController {
             summary = "Get patient booking history list",
             description = "Retrieves the historical list of all past, upcoming, and current bookings initiated by the active patient."
     )
+    @io.swagger.v3.oas.annotations.responses.ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Patient booking history retrieved successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthorized"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden - PATIENT role required"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     @GetMapping("/booking/patient/list")
     @PreAuthorize("hasRole('PATIENT')")
     public ResponseEntity<com.pronurse.common.payload.ApiResponse<List<BookingHistoryResponse>>> getMyHistoryLog(Authentication authentication) {
@@ -89,9 +114,16 @@ public class PatientBookingController {
 
     @Operation(
             summary = "Get single booking details",
-            description = "Retrieves complete booking details and status workflow tracks matching the unique booking number reference."
+            description = "Retrieves complete booking details, assigned nurse info, status workflow tracks, and service items matching the unique booking number reference."
     )
+    @io.swagger.v3.oas.annotations.responses.ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Booking details retrieved successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthorized"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Booking not found"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     @GetMapping("/booking/{bookingNo}")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<com.pronurse.common.payload.ApiResponse<BookingHistoryResponse>> getBookingDetails(@PathVariable String bookingNo) {
         return ResponseEntity.ok(new com.pronurse.common.payload.ApiResponse<>(true, "Booking details retrieved successfully", bookingService.getSingleBookingDetails(bookingNo)));
     }

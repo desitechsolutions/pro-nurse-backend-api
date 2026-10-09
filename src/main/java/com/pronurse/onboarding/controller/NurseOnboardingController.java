@@ -34,12 +34,7 @@ import java.nio.file.Paths;
 
 @RestController
 @RequestMapping("/api/nurse/onboarding")
-@Tag(
-        name = "14. Nurse Onboarding",
-        description = "Nurse onboarding document upload and status APIs. " +
-                      "Allows nurses to upload required documents, check review status, " +
-                      "replace rejected documents, submit for admin review, and view uploaded documents."
-)
+@Tag(name = "16. Nurse Onboarding & Documents", description = "Practitioner document management: upload required credentials, track review progress, replace rejected files, and submit for verification.")
 @SecurityRequirement(name = "Bearer Authentication")
 @PreAuthorize("hasRole('NURSE')")
 @RequiredArgsConstructor

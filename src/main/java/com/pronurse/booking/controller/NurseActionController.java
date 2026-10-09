@@ -20,9 +20,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/booking")
-@Tag(
-        name = "15. Nurse Booking Actions for Web App",
-        description = "Nurse booking action APIs for accepting, rejecting, completing bookings and fetching dashboard data")
+@Tag(name = "08. Web Nurse Booking Actions", description = "Web portal nurse booking actions: accept, reject, complete bookings, and retrieve operational dashboard feeds.")
 @SecurityRequirement(name = "Bearer Authentication")
 @RequiredArgsConstructor
 public class NurseActionController {
@@ -31,7 +29,20 @@ public class NurseActionController {
 
     @PostMapping("/accept")
     @PreAuthorize("hasRole('NURSE')")
-    @Operation(summary = "Accept booking", description = "Accepts a booking offer assigned to the nurse.")
+    @Operation(
+        summary = "Accept booking (Web portal)",
+        description = "Accepts a booking offer assigned to the nurse from the web dashboard.",
+        requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            description = "Booking identifier payload",
+            required = true,
+            content = @Content(
+                mediaType = "application/json",
+                examples = @io.swagger.v3.oas.annotations.media.ExampleObject(
+                    value = "{\n  \"booking_no\": \"PN-TEST-BOOK-001\"\n}"
+                )
+            )
+        )
+    )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Booking accepted successfully", content = @Content(schema = @Schema(implementation = com.pronurse.common.payload.ApiResponse.class))),
         @ApiResponse(responseCode = "400", description = "Booking number is required or invalid request", content = @Content(schema = @Schema(implementation = com.pronurse.common.payload.ApiResponse.class))),
@@ -59,7 +70,20 @@ public class NurseActionController {
 
     @PostMapping("/reject")
     @PreAuthorize("hasRole('NURSE')")
-    @Operation(summary = "Reject booking", description = "Rejects a booking offer assigned to the nurse.")
+    @Operation(
+        summary = "Reject booking (Web portal)",
+        description = "Rejects a booking offer assigned to the nurse from the web dashboard with an optional reason.",
+        requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            description = "Booking rejection payload",
+            required = true,
+            content = @Content(
+                mediaType = "application/json",
+                examples = @io.swagger.v3.oas.annotations.media.ExampleObject(
+                    value = "{\n  \"booking_no\": \"PN-TEST-BOOK-001\",\n  \"reason\": \"Currently attending another patient\"\n}"
+                )
+            )
+        )
+    )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Booking rejected successfully", content = @Content(schema = @Schema(implementation = com.pronurse.common.payload.ApiResponse.class))),
         @ApiResponse(responseCode = "400", description = "Booking number is required or invalid request", content = @Content(schema = @Schema(implementation = com.pronurse.common.payload.ApiResponse.class))),

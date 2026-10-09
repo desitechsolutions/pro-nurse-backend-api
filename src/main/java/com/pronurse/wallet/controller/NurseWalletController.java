@@ -20,7 +20,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/nurse/wallet")
-@Tag(name = "12. Nurse Wallet Management", description = "Manage nurse wallet balances, earnings, and withdrawal requests")
+@Tag(name = "13. Nurse Wallet & Payout Management", description = "Practitioner earnings ledger, fee deductions (10% + 18% GST), wallet balances, and bank payout requests.")
 @SecurityRequirement(name = "Bearer Authentication")
 @RequiredArgsConstructor
 public class NurseWalletController {
@@ -53,7 +53,20 @@ public class NurseWalletController {
 
     @PostMapping("/withdraw")
     @PreAuthorize("hasRole('NURSE')")
-    @Operation(summary = "Request withdrawal", description = "Submits a request to withdraw a specific amount from the nurse wallet.")
+    @Operation(
+        summary = "Request withdrawal",
+        description = "Submits a request to withdraw a specific amount from the nurse wallet balance to the linked bank account.",
+        requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            description = "Withdrawal payout amount payload",
+            required = true,
+            content = @Content(
+                mediaType = "application/json",
+                examples = @io.swagger.v3.oas.annotations.media.ExampleObject(
+                    value = "{\n  \"amount\": 1500.00\n}"
+                )
+            )
+        )
+    )
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Payout request submitted for admin review",
                     content = @Content(schema = @Schema(implementation = ApiResponse.class))),

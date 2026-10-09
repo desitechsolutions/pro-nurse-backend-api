@@ -86,6 +86,9 @@ public class BookingServiceImpl implements BookingService {
         if (request.getLongitude() != null && !request.getLongitude().isBlank()) {
             try { parsedLon = Double.parseDouble(request.getLongitude()); } catch (Exception ignored) {}
         }
+        if (parsedLat == null || parsedLon == null) {
+            throw new ApplicationException("Patient location coordinates (latitude and longitude) are required for nurse dispatch matching.");
+        }
 
         Booking booking = Booking.builder()
                 .bookingNo(ticketNo)
@@ -201,7 +204,9 @@ public class BookingServiceImpl implements BookingService {
 
             if (isValid) {
                 booking.setPaymentStatus("PAID");
-                booking.setBookingStatus("ACCEPTED");
+                if ("PENDING".equalsIgnoreCase(booking.getBookingStatus())) {
+                    booking.setBookingStatus("CONFIRMED");
+                }
                 booking.setRazorpayPaymentId(paymentId);
                 bookingRepository.save(booking);
                 log.info("Payment signature verified successfully for booking: {}", bookingNo);
@@ -218,35 +223,58 @@ public class BookingServiceImpl implements BookingService {
     @Override
     @Transactional
     public void triggerChainedDispatch(Booking booking) {
-        Optional<Long> nextNurseId = bookingRepository.findNextClosestNurseId(
-                booking.getLatitude(), booking.getLongitude(), booking.getId());
-
-        if (nextNurseId.isEmpty()) {
+        if (booking.getLatitude() == null || booking.getLongitude() == null) {
+            log.warn("Cannot dispatch booking {}: GPS coordinates missing.", booking.getBookingNo());
             booking.setBookingStatus("NO_NURSE_AVAILABLE");
             bookingRepository.save(booking);
-            log.warn("System out of nearby service options for ticket: {}", booking.getBookingNo());
             return;
         }
 
-        var candidateUser = userRepository.findById(nextNurseId.get())
-                .orElseThrow(() -> new ApplicationException("System user structural entity missing"));
+        while (true) {
+            Optional<Long> nextNurseId = bookingRepository.findNextClosestNurseId(
+                    booking.getLatitude(), booking.getLongitude(), booking.getId());
 
-        NurseWallet wallet = walletRepository.findByNurseUserMobile(candidateUser.getMobile()).orElse(null);
-        if (wallet != null && wallet.isSuspended()) {
-            log.info("Skipping suspended nurse: {}", candidateUser.getMobile());
-            return; // Don't dispatch to them
+            if (nextNurseId.isEmpty()) {
+                booking.setBookingStatus("NO_NURSE_AVAILABLE");
+                bookingRepository.save(booking);
+                log.warn("System out of nearby service options for ticket: {}", booking.getBookingNo());
+                alertService.broadcastNoNurseAvailable(booking.getPatientUser().getMobile(), booking.getBookingNo());
+                alertService.broadcastAdminAlert("NO_NURSE_AVAILABLE", "Dispatch Exhausted",
+                        "No provider available for booking " + booking.getBookingNo() + " at " + booking.getRawAddress(),
+                        booking.getBookingNo());
+                return;
+            }
+
+            var candidateUser = userRepository.findById(nextNurseId.get())
+                    .orElseThrow(() -> new ApplicationException("System user structural entity missing"));
+
+            NurseWallet wallet = walletRepository.findByNurseUserMobile(candidateUser.getMobile()).orElse(null);
+            if (wallet != null && wallet.isSuspended()) {
+                log.info("Skipping suspended nurse: {}", candidateUser.getMobile());
+                BookingAssignment skippedAssignment = BookingAssignment.builder()
+                        .booking(booking)
+                        .nurseUser(candidateUser)
+                        .status("SKIPPED_SUSPENDED")
+                        .notifiedAt(LocalDateTime.now())
+                        .expiresAt(LocalDateTime.now())
+                        .build();
+                assignmentRepository.save(skippedAssignment);
+                continue;
+            }
+
+            BookingAssignment directOffer = BookingAssignment.builder()
+                    .booking(booking)
+                    .nurseUser(candidateUser)
+                    .status("RINGING")
+                    .notifiedAt(LocalDateTime.now())
+                    .expiresAt(LocalDateTime.now().plusSeconds(30)) // Strict 30 second window countdown
+                    .build();
+
+            assignmentRepository.save(directOffer);
+            log.info("Dispatched live request offer ticket [{}] out to Practitioner ID: {}", booking.getBookingNo(), candidateUser.getMobile());
+            alertService.broadcastNewOfferToNurse(candidateUser.getMobile(), directOffer);
+            return;
         }
-        BookingAssignment directOffer = BookingAssignment.builder()
-                .booking(booking)
-                .nurseUser(candidateUser)
-                .status("RINGING")
-                .notifiedAt(LocalDateTime.now())
-                .expiresAt(LocalDateTime.now().plusSeconds(30)) // Strict 30 second window countdown
-                .build();
-
-        assignmentRepository.save(directOffer);
-        log.info("Dispatched live request offer ticket [{}] out to Practitioner ID: {}", booking.getBookingNo(), candidateUser.getMobile());
-        alertService.broadcastNewOfferToNurse(candidateUser.getMobile(), directOffer);
     }
 
     @Override
@@ -255,7 +283,7 @@ public class BookingServiceImpl implements BookingService {
         Booking booking = bookingRepository.findByBookingNoForUpdate(bookingNo)
                 .orElseThrow(() -> new ApplicationException("No active offering reference located for selection parameters."));
 
-        if (!"PENDING".equalsIgnoreCase(booking.getBookingStatus())) {
+        if (!"PENDING".equalsIgnoreCase(booking.getBookingStatus()) && !"CONFIRMED".equalsIgnoreCase(booking.getBookingStatus())) {
             throw new ApplicationException("Action deadline expired. Request already processed.");
         }
 
@@ -506,14 +534,16 @@ public class BookingServiceImpl implements BookingService {
         booking.setSelectedItems(items);
         bookingRepository.save(booking);
 
-        // Notify the favorite nurse directly
-        alertService.broadcastNewOfferToNurse(favoriteNurse.getMobile(), 
-            BookingAssignment.builder()
+        // Persist assignment before alerting favorite nurse
+        BookingAssignment favoriteAssignment = BookingAssignment.builder()
                 .booking(booking)
                 .nurseUser(favoriteNurse)
                 .status("CONFIRMED")
                 .notifiedAt(LocalDateTime.now())
-                .build());
+                .expiresAt(LocalDateTime.now().plusDays(1))
+                .build();
+        assignmentRepository.save(favoriteAssignment);
+        alertService.broadcastNewOfferToNurse(favoriteNurse.getMobile(), favoriteAssignment);
 
         log.info("Quick booking with favorite nurse created: {} assigned to {}", ticketNo, favoriteNurse.getMobile());
 

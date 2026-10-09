@@ -27,10 +27,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/nurse/location")
-@Tag(
-        name = "05. Nurse Tracking",
-        description = "Nurse tracking APIs"
-)
+@Tag(name = "05. Nurse Tracking & Live Telemetry", description = "Real-time GPS coordinate streaming, location synchronization, and patient tracking map relays.")
 @SecurityRequirement(name = "Bearer Authentication")
 @RequiredArgsConstructor
 public class NurseTrackingController {

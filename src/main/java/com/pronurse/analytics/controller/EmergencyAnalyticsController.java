@@ -4,6 +4,7 @@ import com.pronurse.analytics.dto.EmergencyAnalyticsResponse;
 import com.pronurse.analytics.service.EmergencyAnalyticsService;
 import com.pronurse.common.payload.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -21,8 +22,8 @@ import java.util.Map;
 @RequestMapping("/api/analytics/emergency")
 @RequiredArgsConstructor
 @Slf4j
-@Tag(name = "19. Emergency Analytics", description = "Emergency response time analytics and statistics")
-@SecurityRequirement(name = "bearerAuth")
+@Tag(name = "19. Emergency Response Analytics", description = "Response time statistics, acceptance rates, and date-range telemetry analytics for emergency SOS calls.")
+@SecurityRequirement(name = "Bearer Authentication")
 public class EmergencyAnalyticsController {
 
     private final EmergencyAnalyticsService analyticsService;

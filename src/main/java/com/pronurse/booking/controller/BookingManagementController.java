@@ -5,6 +5,8 @@ import com.pronurse.booking.dto.RescheduleBookingRequest;
 import com.pronurse.booking.entity.Booking;
 import com.pronurse.booking.repository.BookingRepository;
 import com.pronurse.booking.service.DispatchAlertService;
+import com.pronurse.booking.service.RazorpayClientProvider;
+import org.springframework.beans.factory.annotation.Value;
 import com.pronurse.auth.entity.User;
 import com.pronurse.auth.repository.UserRepository;
 import com.pronurse.common.exception.ApplicationException;
@@ -32,13 +34,20 @@ import java.time.LocalDateTime;
 @RequestMapping("/api/booking")
 @RequiredArgsConstructor
 @Slf4j
-@Tag(name = "09. Booking Management", description = "Booking cancellation and rescheduling operations")
+@Tag(name = "10. Booking Management & Cancellation", description = "Booking cancellations with automated tiered refund policy calculation, rescheduling, and status transitions.")
 @SecurityRequirement(name = "Bearer Authentication")
 public class BookingManagementController {
 
     private final BookingRepository bookingRepository;
     private final UserRepository userRepository;
     private final DispatchAlertService alertService;
+    private final RazorpayClientProvider razorpayClientProvider;
+
+    @Value("${razorpay.key.id:}")
+    private String razorpayKey;
+
+    @Value("${razorpay.key.secret:}")
+    private String razorpaySecret;
 
     @Operation(
             summary = "Cancel Booking",
@@ -127,6 +136,54 @@ public class BookingManagementController {
         booking.setBookingStatus("CANCELLED");
         booking.setRemarks(booking.getRemarks() + " | CANCELLED by " + request.getCancelledBy() +
                 ": " + request.getReason());
+
+        // Process refund status if payment was already made
+        if ("PAID".equalsIgnoreCase(booking.getPaymentStatus())) {
+            try {
+                LocalDateTime serviceDateTime = LocalDateTime.of(booking.getBookingDate(), java.time.LocalTime.of(9, 0));
+                long hoursUntilService = java.time.Duration.between(LocalDateTime.now(), serviceDateTime).toHours();
+                java.math.BigDecimal refundRatio = java.math.BigDecimal.ZERO;
+                if (hoursUntilService >= 24) {
+                    booking.setPaymentStatus("REFUND_INITIATED_FULL");
+                    booking.setRemarks(booking.getRemarks() + " [Full refund: 100% policy]");
+                    refundRatio = java.math.BigDecimal.ONE;
+                } else if (hoursUntilService >= 2) {
+                    booking.setPaymentStatus("REFUND_INITIATED_PARTIAL");
+                    booking.setRemarks(booking.getRemarks() + " [Partial refund: 50% policy]");
+                    refundRatio = new java.math.BigDecimal("0.50");
+                } else {
+                    booking.setPaymentStatus("REFUND_FORFEITED");
+                    booking.setRemarks(booking.getRemarks() + " [No refund: cancelled under 2 hours]");
+                }
+
+                if (refundRatio.compareTo(java.math.BigDecimal.ZERO) > 0 &&
+                        booking.getRazorpayPaymentId() != null && !booking.getRazorpayPaymentId().isBlank() &&
+                        razorpayKey != null && !razorpayKey.isBlank() &&
+                        razorpaySecret != null && !razorpaySecret.isBlank()) {
+                    try {
+                        com.razorpay.RazorpayClient razorpay = razorpayClientProvider.getClient(razorpayKey, razorpaySecret);
+                        org.json.JSONObject refundRequest = new org.json.JSONObject();
+                        java.math.BigDecimal totalAmount = booking.getSelectedItems().stream()
+                                .map(com.pronurse.booking.entity.BookingItem::getPriceCharged)
+                                .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
+                        java.math.BigDecimal refundAmountPaise = totalAmount
+                                .multiply(refundRatio)
+                                .multiply(new java.math.BigDecimal(100));
+                        refundRequest.put("amount", refundAmountPaise.longValue());
+                        com.razorpay.Refund refund = razorpay.payments.refund(booking.getRazorpayPaymentId(), refundRequest);
+                        String refundId = refund.get("id");
+                        booking.setRemarks(booking.getRemarks() + " [Razorpay Refund: " + refundId + "]");
+                        log.info("Razorpay automated refund executed: {} for booking: {}", refundId, booking.getBookingNo());
+                    } catch (Exception rzEx) {
+                        log.warn("Razorpay automated refund skipped/failed (requires gateway admin review): {}", rzEx.getMessage());
+                        booking.setRemarks(booking.getRemarks() + " [Razorpay Auto-Refund Pending: " + rzEx.getMessage() + "]");
+                    }
+                }
+            } catch (Exception ignored) {
+                booking.setPaymentStatus("REFUND_INITIATED");
+            }
+        }
+
         booking.setUpdatedAt(LocalDateTime.now());
         bookingRepository.save(booking);
 

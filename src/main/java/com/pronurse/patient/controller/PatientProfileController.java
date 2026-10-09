@@ -21,8 +21,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/patient/profile")
-@Tag(name = "02. Patient Profile",
-        description = "Patient profile management APIs")
+@Tag(name = "02. Patient Profile Management", description = "Patient personal profile synchronization, avatar uploads, and medical report attachments.")
 @SecurityRequirement(name = "Bearer Authentication")
 @RequiredArgsConstructor
 public class PatientProfileController {

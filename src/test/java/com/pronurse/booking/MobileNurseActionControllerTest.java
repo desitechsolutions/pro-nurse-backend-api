@@ -7,6 +7,8 @@ import com.pronurse.booking.controller.MobileNurseActionController;
 import com.pronurse.booking.entity.Booking;
 import com.pronurse.booking.entity.BookingAssignment;
 import com.pronurse.booking.repository.BookingAssignmentRepository;
+import com.pronurse.nurse.repository.NurseProfileRepository;
+import com.pronurse.util.TestDataFactory;
 import com.pronurse.booking.repository.BookingRepository;
 import com.pronurse.config.TestConfig;
 import org.junit.jupiter.api.BeforeEach;
@@ -46,6 +48,9 @@ class MobileNurseActionControllerTest {
     @Autowired
     private BookingAssignmentRepository assignmentRepository;
 
+    @Autowired
+    private NurseProfileRepository nurseProfileRepository;
+
     private User nurseUser;
     private Booking testBooking;
     private BookingAssignment assignment;
@@ -58,6 +63,7 @@ class MobileNurseActionControllerTest {
         nurseUser.setName("Test Nurse User");
         nurseUser.setRole(Role.NURSE);
         nurseUser = userRepository.save(nurseUser);
+        nurseProfileRepository.save(TestDataFactory.createNurseProfile(nurseUser, "NUR-TEST-001"));
 
         // Create patient user
         User patientUser = new User();
@@ -223,5 +229,56 @@ class MobileNurseActionControllerTest {
         assertThrows(com.pronurse.common.exception.ApplicationException.class, () -> {
             mobileNurseActionController.acceptBooking(body, auth);
         });
+    }
+
+    @Test
+    void testStartServiceSuccess() {
+        Authentication auth = new UsernamePasswordAuthenticationToken(
+                nurseUser.getMobile(), 
+                null, 
+                org.springframework.security.core.authority.AuthorityUtils.createAuthorityList("ROLE_NURSE")
+        );
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
+        testBooking.setAssignedNurseUser(nurseUser);
+        testBooking.setBookingStatus("ACCEPTED");
+        testBooking = bookingRepository.save(testBooking);
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("booking_no", testBooking.getBookingNo());
+
+        ResponseEntity<Map<String, Object>> response = mobileNurseActionController.startService(body, auth);
+        assertNotNull(response);
+        assertEquals(200, response.getStatusCode().value());
+        assertTrue((Boolean) response.getBody().get("status"));
+        assertEquals("Service started successfully. Booking is now IN_PROGRESS.", response.getBody().get("message"));
+
+        Map<String, Object> data = (Map<String, Object>) response.getBody().get("data");
+        assertEquals("IN_PROGRESS", data.get("booking_status"));
+    }
+
+    @Test
+    void testUpdateLocationSuccess() {
+        Authentication auth = new UsernamePasswordAuthenticationToken(
+                nurseUser.getMobile(), 
+                null, 
+                org.springframework.security.core.authority.AuthorityUtils.createAuthorityList("ROLE_NURSE")
+        );
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("latitude", 28.5355);
+        body.put("longitude", 77.3910);
+        body.put("booking_no", testBooking.getBookingNo());
+
+        ResponseEntity<Map<String, Object>> response = mobileNurseActionController.updateLocation(body, auth);
+        assertNotNull(response);
+        assertEquals(200, response.getStatusCode().value());
+        assertTrue((Boolean) response.getBody().get("status"));
+        assertEquals("Location updated successfully.", response.getBody().get("message"));
+
+        Map<String, Object> data = (Map<String, Object>) response.getBody().get("data");
+        assertEquals(28.5355, (Double) data.get("latitude"));
+        assertEquals(77.3910, (Double) data.get("longitude"));
     }
 }

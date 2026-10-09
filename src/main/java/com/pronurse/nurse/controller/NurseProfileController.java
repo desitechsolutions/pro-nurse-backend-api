@@ -19,13 +19,11 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/nurse/profile")
-@Tag(
-        name = "03. Nurse Profile",
-        description = "Nurse profile management APIs"
-)
+@Tag(name = "03. Nurse Profile Management", description = "Practitioner profile details, qualifications, experience, specialties, and on-duty availability toggles.")
 @SecurityRequirement(name = "Bearer Authentication")
 @RequiredArgsConstructor
 public class NurseProfileController {
@@ -74,5 +72,40 @@ public class NurseProfileController {
         String mobile = (String) authentication.getPrincipal();
         NurseProfileResponse dataCard = nurseProfileService.getProfileByMobile(mobile);
         return ResponseEntity.ok(new ApiResponse<>(true, "Nurse profile metrics synchronized.", dataCard));
+    }
+
+    @PutMapping("/duty-status")
+    @PreAuthorize("hasRole('NURSE')")
+    @Operation(
+        summary = "Toggle nurse on-duty status",
+        description = "Updates whether the nurse is available for receiving booking dispatches.",
+        requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            description = "Duty status payload",
+            required = true,
+            content = @Content(
+                mediaType = "application/json",
+                examples = @io.swagger.v3.oas.annotations.media.ExampleObject(
+                    value = "{\n  \"isOnDuty\": true\n}"
+                )
+            )
+        )
+    )
+    public ResponseEntity<ApiResponse<Void>> updateDutyStatus(
+            @RequestBody Map<String, Object> body,
+            Authentication authentication) {
+        String mobile = (String) authentication.getPrincipal();
+        Object onDutyObj = body.get("isOnDuty") != null ? body.get("isOnDuty") : body.get("is_on_duty");
+        if (onDutyObj == null) {
+            return ResponseEntity.badRequest().body(ApiResponse.<Void>builder()
+                    .success(false)
+                    .message("isOnDuty field is required.")
+                    .build());
+        }
+        boolean isOnDuty = Boolean.parseBoolean(onDutyObj.toString());
+        nurseProfileService.updateDutyStatus(mobile, isOnDuty);
+        return ResponseEntity.ok(ApiResponse.<Void>builder()
+                .success(true)
+                .message("Duty status updated to: " + (isOnDuty ? "ON DUTY" : "OFF DUTY"))
+                .build());
     }
 }

@@ -31,7 +31,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long>, JpaSpec
             "AND np.user_id NOT IN (SELECT ba.nurse_user_id FROM booking_assignments ba WHERE ba.booking_id = :bookingId) " +
             "ORDER BY (6371 * acos(cos(radians(:lat)) * cos(radians(np.latitude)) * cos(radians(np.longitude) - radians(:lon)) + sin(radians(:lat)) * sin(radians(np.latitude)))) ASC " +
             "LIMIT 1", nativeQuery = true)
-    Optional<Long> findNextClosestNurseId(@Param("lat") double lat, @Param("lon") double lon, @Param("bookingId") Long bookingId);
+    Optional<Long> findNextClosestNurseId(@Param("lat") Double lat, @Param("lon") Double lon, @Param("bookingId") Long bookingId);
 
     /**
      * Find N nearest nurses for emergency dispatch
@@ -41,7 +41,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long>, JpaSpec
             "WHERE np.is_verified = true AND np.is_on_duty = true " +
             "ORDER BY (6371 * acos(cos(radians(:lat)) * cos(radians(np.latitude)) * cos(radians(np.longitude) - radians(:lon)) + sin(radians(:lat)) * sin(radians(np.latitude)))) ASC " +
             "LIMIT :limit", nativeQuery = true)
-    List<Long> findNearestNurseIds(@Param("lat") double lat, @Param("lon") double lon, @Param("limit") int limit);
+    List<Long> findNearestNurseIds(@Param("lat") Double lat, @Param("lon") Double lon, @Param("limit") int limit);
 
     @Query("SELECT b FROM Booking b LEFT JOIN FETCH b.patientUser LEFT JOIN FETCH b.assignedNurseUser LEFT JOIN FETCH b.selectedItems WHERE b.patientUser.mobile = :mobile ORDER BY b.createdAt DESC")
     List<Booking> findByPatientUserMobileOrderByCreatedAtDesc(@Param("mobile") String mobile);
@@ -50,4 +50,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long>, JpaSpec
     List<Booking> findByAssignedNurseUserMobileOrderByCreatedAtDesc(@Param("mobile") String mobile);
 
     Page<Booking> findByBookingStatus(String bookingStatus, Pageable pageable);
+
+    @Query("SELECT b FROM Booking b WHERE b.bookingStatus IN ('PENDING', 'NO_NURSE_AVAILABLE') AND b.createdAt < :cutoff")
+    List<Booking> findStaleUnassignedBookings(@Param("cutoff") LocalDateTime cutoff);
 }

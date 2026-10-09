@@ -9,4 +9,5 @@ public interface NurseProfileService {
     NurseProfileResponse getProfileByMobile(String mobile); // Updated return context
     Object getAdminProfileByMobile(String mobile);
     void updateLiveCoordinates(String mobile, String latitude, String longitude);
+    void updateDutyStatus(String mobile, boolean isOnDuty);
 }

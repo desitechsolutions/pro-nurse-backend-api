@@ -29,39 +29,27 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/nurses")
 @RequiredArgsConstructor
 @Slf4j
-@Tag(name = "04. Nurse Discovery", description = "Public nurse search and discovery for patients")
+@Tag(name = "04. Nurse Discovery & Search", description = "Public nurse directory search with filtering by keyword, city, gender, rating, and availability date.")
 public class NurseSearchController {
 
     private final NurseProfileRepository nurseProfileRepository;
 
     @Operation(
-            summary = "Search Nurses",
+            summary = "Search & Filter Nurses",
             description = """
-                Search and filter verified nurses based on various criteria.
+                Search verified practitioners available for patient bookings.
                 
-                **Features:**
-                - Proximity-based search (finds nurses near patient location)
-                - Filter by specialization, rating, language, gender
-                - Only shows verified and approved nurses
-                - Excludes sensitive information (mobile, address, etc.)
-                - Pagination support
+                **Supported Query Parameters:**
+                - `keyword`: Search by practitioner name, qualification, or specialty
+                - `city`: Filter by city (e.g. Lucknow, Delhi, Noida)
+                - `gender`: Filter by gender (`MALE`, `FEMALE`, `OTHER`)
+                - `rating`: Filter by minimum average review score (e.g. `4.0`, `4.5`)
+                - `available_date`: Target service date (`YYYY-MM-DD`)
+                - `page`: Page number (1-indexed, default: 1)
+                - `limit`: Number of results per page (default: 10)
                 
-                **Use Cases:**
-                - Patient browsing available nurses before booking
-                - Finding specialists in specific areas
-                - Locating nearby nurses for emergency
-                
-                **Privacy:**
-                - Mobile numbers are hidden
-                - Exact addresses are hidden
-                - Only public profile information is shown
-                
-                **Example Queries:**
-                - Find nurses within 10km: `?latitude=28.4595&longitude=77.0266&radiusKm=10`
-                - Find surgery specialists: `?specialization=Post Surgery Care`
-                - Find highly rated nurses: `?minRating=4.5`
-                - Find Hindi-speaking nurses: `?language=Hindi`
-                - Find nurses on duty: `?onDutyOnly=true`
+                **Response:**
+                - Returns paginated list of verified nurse cards with experience, specialties, ratings, consultation fees, and on-duty availability.
                 """
     )
     @ApiResponses(value = {
@@ -78,13 +66,13 @@ public class NurseSearchController {
     })
     @GetMapping("/search")
     public ResponseEntity<com.pronurse.nurse.dto.NurseSearchResponse> searchNurses(
-            @Parameter(description = "Keyword search") @RequestParam(required = false) String keyword,
-            @Parameter(description = "City filter") @RequestParam(required = false) String city,
-            @Parameter(description = "Gender filter") @RequestParam(required = false) Gender gender,
-            @Parameter(description = "Minimum rating") @RequestParam(required = false) Double rating,
-            @Parameter(description = "Available Date filter") @RequestParam(name = "available_date", required = false) String availableDate,
-            @RequestParam(defaultValue = "1") Integer page,
-            @RequestParam(defaultValue = "10") Integer limit) {
+            @Parameter(description = "Keyword search for nurse name or specialty", example = "ICU") @RequestParam(required = false) String keyword,
+            @Parameter(description = "City filter", example = "Lucknow") @RequestParam(required = false) String city,
+            @Parameter(description = "Gender filter (MALE, FEMALE, OTHER)") @RequestParam(required = false) Gender gender,
+            @Parameter(description = "Minimum review rating threshold (e.g. 4.0)", example = "4.0") @RequestParam(required = false) Double rating,
+            @Parameter(description = "Target booking date (YYYY-MM-DD)", example = "2026-10-15") @RequestParam(name = "available_date", required = false) String availableDate,
+            @Parameter(description = "Page number (1-based index)", example = "1") @RequestParam(defaultValue = "1") Integer page,
+            @Parameter(description = "Number of items per page", example = "10") @RequestParam(defaultValue = "10") Integer limit) {
 
         log.info("Searching nurses with filters - keyword: {}, city: {}, gender: {}, rating: {}, availableDate: {}, page: {}, limit: {}",
                 keyword, city, gender, rating, availableDate, page, limit);

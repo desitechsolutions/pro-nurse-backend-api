@@ -7,6 +7,7 @@ import com.pronurse.favorites.dto.AddFavoriteRequest;
 import com.pronurse.favorites.dto.FavoriteNurseResponse;
 import com.pronurse.favorites.service.FavoriteNurseService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -22,8 +23,8 @@ import java.util.List;
 @RequestMapping("/api/favorites")
 @RequiredArgsConstructor
 @Slf4j
-@Tag(name = "16. Favorite Nurses", description = "Manage favorite nurses for quick booking")
-@SecurityRequirement(name = "bearerAuth")
+@Tag(name = "15. Favorite Nurses (Quick Booking)", description = "Bookmark preferred nurses and perform direct instant bookings bypassing standard dispatch algorithms.")
+@SecurityRequirement(name = "Bearer Authentication")
 public class FavoriteNurseController {
 
     private final FavoriteNurseService favoriteService;

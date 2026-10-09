@@ -154,4 +154,15 @@ public class NurseProfileServiceImpl implements NurseProfileService {
             throw new ApplicationException("Invalid coordinate data format.");
         }
     }
+
+    @Override
+    @Transactional
+    public void updateDutyStatus(String mobile, boolean isOnDuty) {
+        NurseProfile nurseProfile = nurseProfileRepository.findByUserMobile(mobile)
+                .orElseThrow(() -> new ApplicationException("Practitioner profile record missing for: " + mobile));
+        nurseProfile.setOnDuty(isOnDuty);
+        nurseProfile.setUpdatedAt(LocalDateTime.now());
+        nurseProfileRepository.save(nurseProfile);
+        logger.info("Nurse duty status updated for mobile: {} -> {}", mobile, isOnDuty ? "ON DUTY" : "OFF DUTY");
+    }
 }

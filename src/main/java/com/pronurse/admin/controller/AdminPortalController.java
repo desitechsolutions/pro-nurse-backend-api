@@ -31,8 +31,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/admin")
-@Tag(name = "13. Admin Portal",
-        description = "Administrative dashboard and management APIs for system oversight, user moderation, and service catalog control")
+@Tag(name = "18. Admin Portal & System Oversight", description = "Administrative dashboard, system health KPI metrics, practitioner verification, service catalog management, and user access moderation.")
 @PreAuthorize("hasRole('ADMIN')")
 @SecurityRequirement(name = "Bearer Authentication")
 @RequiredArgsConstructor

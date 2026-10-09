@@ -1,5 +1,6 @@
 package com.pronurse.notification.service;
 
+import com.google.firebase.FirebaseApp;
 import com.google.firebase.messaging.*;
 import com.pronurse.auth.entity.User;
 import com.pronurse.auth.repository.UserRepository;
@@ -68,6 +69,10 @@ public class FCMServiceImpl implements FCMService {
     @Override
     public void sendNotification(String mobile, String title, String body, Map<String, String> data) {
         try {
+            if (FirebaseApp.getApps().isEmpty()) {
+                log.warn("FirebaseApp is not initialized. Skipping FCM dispatch to: {}", mobile);
+                return;
+            }
             User user = userRepository.findByMobile(mobile)
                     .orElseThrow(() -> new ApplicationException("User not found"));
 
@@ -132,6 +137,10 @@ public class FCMServiceImpl implements FCMService {
 
     @Override
     public void sendBulkNotification(List<String> mobiles, String title, String body, Map<String, String> data) {
+        if (FirebaseApp.getApps().isEmpty()) {
+            log.warn("FirebaseApp is not initialized. Skipping bulk FCM dispatch.");
+            return;
+        }
         List<String> tokens = new ArrayList<>();
         
         for (String mobile : mobiles) {
