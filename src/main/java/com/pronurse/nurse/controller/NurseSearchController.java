@@ -133,6 +133,7 @@ public class NurseSearchController {
                             .qualification(np.getQualification())
                             .specialization(np.getSpecialization())
                             .languages(langList)
+                            .mobile(np.getUser().getMobile() != null ? np.getUser().getMobile() : "")
                             .city(np.getCity() != null ? np.getCity() : "Lucknow")
                             .rating(np.getAverageRating())
                             .total_reviews(np.getTotalReviewsCount())

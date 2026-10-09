@@ -28,6 +28,10 @@ public class NurseSearchItem {
     @Schema(description = "Total experience in years", example = "5")
     private int experience;
 
+    @Schema(description = "Nurse Mobile Number", example = "")
+    private String mobile;
+
+
     @Schema(description = "Qualification details", example = "B.Sc. Nursing")
     private String qualification;
 
