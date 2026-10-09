@@ -34,6 +34,10 @@ public class NurseSearchItem {
     @Schema(description = "Specialization details", example = "Critical Care")
     private String specialization;
 
+//    change code
+    @Schema(description = "mobile",example = "")
+    private String mobile;
+
     @Schema(description = "List of languages spoken")
     private List<String> languages;
 
