@@ -82,12 +82,16 @@ public class NurseSearchController {
             @Parameter(description = "City filter") @RequestParam(required = false) String city,
             @Parameter(description = "Gender filter") @RequestParam(required = false) Gender gender,
             @Parameter(description = "Minimum rating") @RequestParam(required = false) Double rating,
+          // change code
+            @Parameter(description = "mobile filter") @RequestParam(required = false) String mobile,
             @Parameter(description = "Available Date filter") @RequestParam(name = "available_date", required = false) String availableDate,
             @RequestParam(defaultValue = "1") Integer page,
-            @RequestParam(defaultValue = "10") Integer limit) {
+            @RequestParam(defaultValue = "10") Integer limit)
 
-        log.info("Searching nurses with filters - keyword: {}, city: {}, gender: {}, rating: {}, availableDate: {}, page: {}, limit: {}",
-                keyword, city, gender, rating, availableDate, page, limit);
+    {
+     // change code
+        log.info("Searching nurses with filters - keyword: {}, city: {}, gender: {}, rating: {}, mobile:{}, availableDate: {}, page: {}, limit: {}",
+                keyword, city, gender, rating, mobile, availableDate, page, limit);
 
         List<NurseProfile> allNurses = nurseProfileRepository.searchNursesMobile(keyword, city, gender, rating);
 
@@ -132,6 +136,8 @@ public class NurseSearchController {
                             .experience(expYears)
                             .qualification(np.getQualification())
                             .specialization(np.getSpecialization())
+                          //change code
+                            .mobile(np.getUser().getMobile())
                             .languages(langList)
                             .city(np.getCity() != null ? np.getCity() : "Lucknow")
                             .rating(np.getAverageRating())

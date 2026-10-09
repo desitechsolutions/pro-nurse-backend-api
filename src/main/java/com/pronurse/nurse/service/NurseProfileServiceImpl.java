@@ -98,6 +98,7 @@ public class NurseProfileServiceImpl implements NurseProfileService {
                 .id(profile.getId())
                 .nurseId(profile.getNurseId())
                 .name(profile.getUser().getName())
+                 //change code
                 .mobile(profile.getUser().getMobile())
                 .email(profile.getUser().getEmail())
                 .gender(profile.getGender())
