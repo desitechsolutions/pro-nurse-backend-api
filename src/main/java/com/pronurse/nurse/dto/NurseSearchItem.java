@@ -58,4 +58,13 @@ public class NurseSearchItem {
 
     @Schema(description = "Next available time slot representation", example = "2026-07-20 10:00 AM")
     private String next_available;
+
+    @Schema(description = "Calculated distance from patient in kilometers", example = "2.4")
+    private Double distance_km;
+
+    @Schema(description = "Formatted distance string", example = "2.4 km")
+    private String distance;
+
+    @Schema(description = "Whether the nurse is currently engaged in an active booking", example = "false")
+    private Boolean is_busy;
 }

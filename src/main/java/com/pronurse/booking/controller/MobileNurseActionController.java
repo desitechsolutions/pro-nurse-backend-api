@@ -162,8 +162,21 @@ public class MobileNurseActionController {
             ));
         }
 
-        // Process acceptance
-        bookingService.processNurseResponse(booking.getBookingNo(), nurseMobile, true, null);
+        // Process acceptance with graceful concurrency handling
+        try {
+            bookingService.processNurseResponse(booking.getBookingNo(), nurseMobile, true, null);
+        } catch (com.pronurse.common.exception.ApplicationException e) {
+            return ResponseEntity.ok(Map.of(
+                    "status", false,
+                    "message", e.getMessage()
+            ));
+        } catch (org.springframework.dao.PessimisticLockingFailureException e) {
+            log.warn("Lock contention when accepting booking {}: {}", booking.getBookingNo(), e.getMessage());
+            return ResponseEntity.ok(Map.of(
+                    "status", false,
+                    "message", "Booking offer expired or already processed by another practitioner."
+            ));
+        }
 
         // Fetch refreshed booking
         Booking updatedBooking = bookingRepository.findById(booking.getId()).get();

@@ -2,11 +2,13 @@ package com.pronurse.booking.entity;
 
 import com.pronurse.auth.entity.User;
 import jakarta.persistence.*;
+import org.hibernate.annotations.DynamicUpdate;
 import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "booking_assignments")
+@DynamicUpdate
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

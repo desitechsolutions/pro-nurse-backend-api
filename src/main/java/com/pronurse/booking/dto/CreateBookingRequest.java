@@ -9,6 +9,10 @@ import java.util.List;
 @Data
 @Schema(description = "Request body to create a new booking")
 public class CreateBookingRequest {
+    @com.fasterxml.jackson.annotation.JsonAlias({"nurse_id", "targetNurseId"})
+    @Schema(description = "Optional ID of specific nurse chosen directly by patient from profile (if omitted, auto-dispatched to nearest)", example = "12")
+    private Long nurseId;
+
     @NotEmpty(message = "At least one service subcategory must be selected")
     @Schema(description = "List of service subcategory IDs selected for the booking", example = "[1, 2]")
     private List<Long> selectedServiceIds;

@@ -9,6 +9,7 @@ import org.springframework.validation.ObjectError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.util.Arrays;
@@ -20,6 +21,7 @@ import java.util.stream.Collectors;
  * A global exception handler to provide consistent error responses across the application.
  */
 @RestControllerAdvice
+@Slf4j
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(EntityNotFoundException.class)
@@ -81,6 +83,15 @@ public class GlobalExceptionHandler {
         error.put("message", ex.getMessage());
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(error);
+    }
+
+    @ExceptionHandler(org.springframework.dao.ConcurrencyFailureException.class)
+    public ResponseEntity<Map<String, Object>> handleConcurrencyFailure(org.springframework.dao.ConcurrencyFailureException ex) {
+        log.warn("Database concurrency failure detected: {}", ex.getMessage());
+        Map<String, Object> error = new HashMap<>();
+        error.put("success", false);
+        error.put("message", "Request could not be processed due to a concurrent update or lock timeout. Please retry.");
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
     }
 
     @ExceptionHandler(ApplicationException.class)

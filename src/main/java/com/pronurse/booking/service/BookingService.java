@@ -69,6 +69,11 @@ public interface BookingService {
     void processNurseResponse(String bookingNo, String mobile, boolean accept, String reason);
 
     /**
+     * Handles single offer timeout safely inside an isolated transaction with consistent lock ordering.
+     */
+    void handleOfferTimeout(Long assignmentId);
+
+    /**
      * Fetches the current live operations pipeline matching the nurse's profile tracking parameters.
      */
     List<NurseDashboardResponse> getNurseDashboardFeed(String nurseMobile);

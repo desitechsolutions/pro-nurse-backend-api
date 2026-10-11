@@ -32,21 +32,22 @@ public class BookingAssignmentScheduler {
     /**
      * Scans for expired, unanswered nurse offers every 5 seconds.
      */
+    /**
+     * Scans for expired, unanswered nurse offers every 5 seconds.
+     * Note: Not @Transactional at loop level to avoid long-lived batch row locks.
+     * Each offer timeout executes in its own isolated transaction with consistent lock ordering.
+     */
     @Scheduled(fixedDelay = 5000)
-    @Transactional
     public void clearExpiredOffers() {
         List<BookingAssignment> timedOutOffers = assignmentRepository
                 .findByStatusAndExpiresAtBefore("RINGING", LocalDateTime.now());
 
         for (BookingAssignment assignment : timedOutOffers) {
-            log.info("Offer for booking {} timed out on nurse {}.",
-                    assignment.getBooking().getBookingNo(), assignment.getNurseUser().getMobile());
-
-            assignment.setStatus("TIMEOUT");
-            assignmentRepository.save(assignment);
-
-            // Re-route the booking to the next closest nurse
-            bookingService.triggerChainedDispatch(assignment.getBooking());
+            try {
+                bookingService.handleOfferTimeout(assignment.getId());
+            } catch (Exception e) {
+                log.error("Failed to process timeout for assignment ID {}: {}", assignment.getId(), e.getMessage());
+            }
         }
     }
 

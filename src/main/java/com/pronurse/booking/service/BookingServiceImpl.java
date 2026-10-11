@@ -13,6 +13,7 @@ import com.pronurse.favorites.repository.FavoriteNurseRepository;
 import com.pronurse.catalog.entity.MedicalService;
 import com.pronurse.catalog.repository.MedicalServiceRepository;
 import com.pronurse.auth.repository.UserRepository;
+import com.pronurse.auth.entity.User;
 import com.pronurse.common.exception.ApplicationException;
 import com.pronurse.common.util.LocalFileStorageServiceUtil;
 import com.pronurse.nurse.repository.NurseProfileRepository;
@@ -119,8 +120,41 @@ public class BookingServiceImpl implements BookingService {
         booking.setSelectedItems(items);
         bookingRepository.save(booking);
 
-        // Instantly trigger initial dispatch engine matching
-        triggerChainedDispatch(booking);
+        // Check if patient selected a direct specific nurse from profile
+        if (request.getNurseId() != null) {
+            User targetNurseUser = userRepository.findById(request.getNurseId())
+                    .orElseThrow(() -> new ApplicationException("Selected nurse profile not found."));
+
+            var targetProfile = nurseProfileRepository.findByUserMobile(targetNurseUser.getMobile())
+                    .orElseThrow(() -> new ApplicationException("Selected nurse practitioner profile not found."));
+
+            if (!targetProfile.isVerified()) {
+                throw new ApplicationException("Selected nurse profile is pending verification.");
+            }
+            if (!targetProfile.isOnDuty()) {
+                throw new ApplicationException("Selected nurse is currently off-duty. Please select another nurse or choose auto-dispatch.");
+            }
+
+            // Verify nurse is not already occupied with another active booking
+            if (bookingRepository.isNurseCurrentlyBusy(targetNurseUser.getId())) {
+                throw new ApplicationException("Selected nurse is currently serving another patient. Please choose another nurse or select auto-dispatch.");
+            }
+
+            BookingAssignment directOffer = BookingAssignment.builder()
+                    .booking(booking)
+                    .nurseUser(targetNurseUser)
+                    .status("RINGING")
+                    .notifiedAt(LocalDateTime.now())
+                    .expiresAt(LocalDateTime.now().plusSeconds(30))
+                    .build();
+
+            assignmentRepository.save(directOffer);
+            log.info("Direct booking offer for ticket [{}] dispatched directly to chosen Practitioner: {}", ticketNo, targetNurseUser.getMobile());
+            alertService.broadcastNewOfferToNurse(targetNurseUser.getMobile(), directOffer);
+        } else {
+            // Instantly trigger initial geospatial nearest-match dispatch engine
+            triggerChainedDispatch(booking);
+        }
 
         return ticketNo;
     }
@@ -275,6 +309,41 @@ public class BookingServiceImpl implements BookingService {
             alertService.broadcastNewOfferToNurse(candidateUser.getMobile(), directOffer);
             return;
         }
+    }
+
+    @Override
+    @Transactional
+    public void handleOfferTimeout(Long assignmentId) {
+        BookingAssignment assignment = assignmentRepository.findById(assignmentId).orElse(null);
+        if (assignment == null || !"RINGING".equals(assignment.getStatus())) {
+            return;
+        }
+
+        // Lock the booking row first (consistent lock order with processNurseResponse)
+        Booking booking = bookingRepository.findByBookingNoForUpdate(assignment.getBooking().getBookingNo()).orElse(null);
+        if (booking == null) {
+            return;
+        }
+
+        // If booking is no longer pending/confirmed, another thread already finalized it
+        if (!"PENDING".equalsIgnoreCase(booking.getBookingStatus()) && !"CONFIRMED".equalsIgnoreCase(booking.getBookingStatus())) {
+            return;
+        }
+
+        // Re-check assignment status under locked booking context
+        BookingAssignment freshAssignment = assignmentRepository.findById(assignmentId).orElse(null);
+        if (freshAssignment == null || !"RINGING".equals(freshAssignment.getStatus())) {
+            return;
+        }
+
+        log.info("Offer for booking {} timed out on nurse {}.",
+                booking.getBookingNo(), freshAssignment.getNurseUser().getMobile());
+
+        freshAssignment.setStatus("TIMEOUT");
+        assignmentRepository.save(freshAssignment);
+
+        // Re-route the booking to the next closest nurse
+        triggerChainedDispatch(booking);
     }
 
     @Override

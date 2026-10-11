@@ -29,6 +29,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long>, JpaSpec
             "JOIN users u ON np.user_id = u.id " +
             "WHERE np.is_verified = true AND np.is_on_duty = true " +
             "AND np.user_id NOT IN (SELECT ba.nurse_user_id FROM booking_assignments ba WHERE ba.booking_id = :bookingId) " +
+            "AND np.user_id NOT IN (SELECT b.assigned_nurse_user_id FROM bookings b WHERE b.assigned_nurse_user_id IS NOT NULL AND b.booking_status IN ('ACCEPTED', 'IN_PROGRESS')) " +
             "ORDER BY (6371 * acos(cos(radians(:lat)) * cos(radians(np.latitude)) * cos(radians(np.longitude) - radians(:lon)) + sin(radians(:lat)) * sin(radians(np.latitude)))) ASC " +
             "LIMIT 1", nativeQuery = true)
     Optional<Long> findNextClosestNurseId(@Param("lat") Double lat, @Param("lon") Double lon, @Param("bookingId") Long bookingId);
@@ -39,6 +40,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long>, JpaSpec
     @Query(value = "SELECT np.user_id FROM nurse_profiles np " +
             "JOIN users u ON np.user_id = u.id " +
             "WHERE np.is_verified = true AND np.is_on_duty = true " +
+            "AND np.user_id NOT IN (SELECT b.assigned_nurse_user_id FROM bookings b WHERE b.assigned_nurse_user_id IS NOT NULL AND b.booking_status IN ('ACCEPTED', 'IN_PROGRESS')) " +
             "ORDER BY (6371 * acos(cos(radians(:lat)) * cos(radians(np.latitude)) * cos(radians(np.longitude) - radians(:lon)) + sin(radians(:lat)) * sin(radians(np.latitude)))) ASC " +
             "LIMIT :limit", nativeQuery = true)
     List<Long> findNearestNurseIds(@Param("lat") Double lat, @Param("lon") Double lon, @Param("limit") int limit);
@@ -53,4 +55,10 @@ public interface BookingRepository extends JpaRepository<Booking, Long>, JpaSpec
 
     @Query("SELECT b FROM Booking b WHERE b.bookingStatus IN ('PENDING', 'NO_NURSE_AVAILABLE') AND b.createdAt < :cutoff")
     List<Booking> findStaleUnassignedBookings(@Param("cutoff") LocalDateTime cutoff);
+
+    @Query("SELECT COUNT(b) > 0 FROM Booking b WHERE b.assignedNurseUser.id = :nurseUserId AND b.bookingStatus IN ('ACCEPTED', 'IN_PROGRESS')")
+    boolean isNurseCurrentlyBusy(@Param("nurseUserId") Long nurseUserId);
+
+    @Query("SELECT DISTINCT b.assignedNurseUser.id FROM Booking b WHERE b.assignedNurseUser.id IS NOT NULL AND b.bookingStatus IN ('ACCEPTED', 'IN_PROGRESS')")
+    List<Long> findCurrentlyBusyNurseIds();
 }

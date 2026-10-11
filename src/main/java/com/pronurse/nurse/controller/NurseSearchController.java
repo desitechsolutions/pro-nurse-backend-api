@@ -5,6 +5,9 @@ import com.pronurse.enums.Gender;
 import com.pronurse.nurse.dto.NurseSearchRequest;
 import com.pronurse.nurse.dto.PublicNurseProfileResponse;
 import com.pronurse.nurse.entity.NurseProfile;
+import com.pronurse.booking.repository.BookingRepository;
+import com.pronurse.nurse.dto.NurseSearchItem;
+import com.pronurse.nurse.dto.NurseSearchResponse;
 import com.pronurse.nurse.repository.NurseProfileRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -33,6 +36,7 @@ import java.util.stream.Collectors;
 public class NurseSearchController {
 
     private final NurseProfileRepository nurseProfileRepository;
+    private final BookingRepository bookingRepository;
 
     @Operation(
             summary = "Search & Filter Nurses",
@@ -177,6 +181,115 @@ public class NurseSearchController {
 
         return Math.round(distance * 10.0) / 10.0; // Round to 1 decimal place
     }
+
+    @Operation(
+            summary = "Find Nearby Nurses for Patient (Geospatial)",
+            description = """
+                Fetches verified on-duty nurses near patient GPS coordinates sorted by distance.
+                
+                **Query Parameters:**
+                - `latitude`: Patient coordinate latitude (Required)
+                - `longitude`: Patient coordinate longitude (Required)
+                - `radius`: Search radius in kilometers (Default: 15.0 km)
+                - `keyword`: Optional search keyword (specialty, name)
+                - `page`: Page number (1-based index, default: 1)
+                - `limit`: Number of items per page (default: 10)
+                """
+    )
+    @GetMapping("/nearby")
+    public ResponseEntity<NurseSearchResponse> getNearbyNurses(
+            @Parameter(description = "Patient GPS latitude", example = "28.6140") @RequestParam double latitude,
+            @Parameter(description = "Patient GPS longitude", example = "77.2095") @RequestParam double longitude,
+            @Parameter(description = "Search radius in km", example = "15.0") @RequestParam(defaultValue = "15.0") double radius,
+            @Parameter(description = "Optional keyword filter") @RequestParam(required = false) String keyword,
+            @Parameter(description = "Page number (1-based)", example = "1") @RequestParam(defaultValue = "1") Integer page,
+            @Parameter(description = "Items per page", example = "10") @RequestParam(defaultValue = "10") Integer limit) {
+
+        log.info("Fetching nearby nurses for lat: {}, lon: {}, radius: {} km", latitude, longitude, radius);
+
+        List<NurseProfile> onDutyNurses = nurseProfileRepository.findAll().stream()
+                .filter(np -> np.isVerified() && np.isOnDuty() && np.getLatitude() != null && np.getLongitude() != null)
+                .collect(Collectors.toList());
+
+        java.util.Set<Long> busyNurseIds = new java.util.HashSet<>(bookingRepository.findCurrentlyBusyNurseIds());
+
+        String kw = (keyword != null && !keyword.trim().isEmpty()) ? keyword.trim().toLowerCase() : null;
+
+        List<NurseSearchItem> items = onDutyNurses.stream()
+                .map(np -> {
+                    double dist = calculateDistance(latitude, longitude, np.getLatitude(), np.getLongitude());
+                    return new java.util.AbstractMap.SimpleEntry<>(np, dist);
+                })
+                .filter(entry -> entry.getValue() <= radius)
+                .filter(entry -> {
+                    if (kw == null) return true;
+                    NurseProfile np = entry.getKey();
+                    String name = np.getUser().getName() != null ? np.getUser().getName().toLowerCase() : "";
+                    String spec = np.getSpecialization() != null ? np.getSpecialization().toLowerCase() : "";
+                    String qual = np.getQualification() != null ? np.getQualification().toLowerCase() : "";
+                    return name.contains(kw) || spec.contains(kw) || qual.contains(kw);
+                })
+                .sorted(java.util.Comparator.comparingDouble(java.util.Map.Entry::getValue))
+                .map(entry -> {
+                    NurseProfile np = entry.getKey();
+                    double dist = entry.getValue();
+
+                    int expYears = 0;
+                    if (np.getExperience() != null) {
+                        try {
+                            String numStr = np.getExperience().replaceAll("[^0-9]", "");
+                            if (!numStr.isEmpty()) expYears = Integer.parseInt(numStr);
+                        } catch (Exception ignored) {}
+                    }
+
+                    List<String> langList = java.util.Collections.emptyList();
+                    if (np.getLanguages() != null && !np.getLanguages().trim().isEmpty()) {
+                        langList = java.util.Arrays.stream(np.getLanguages().split(","))
+                                .map(String::trim)
+                                .collect(Collectors.toList());
+                    }
+
+                    boolean isBusy = busyNurseIds.contains(np.getUser().getId());
+
+                    return NurseSearchItem.builder()
+                            .id(np.getUser().getId())
+                            .name(np.getUser().getName())
+                            .profile_image(np.getProfileImage() != null
+                                    ? "/api/files/profile-image/" + np.getUser().getId()
+                                    : null)
+                            .gender(np.getGender() != null ? np.getGender().name() : null)
+                            .experience(expYears)
+                            .qualification(np.getQualification())
+                            .specialization(np.getSpecialization())
+                            .languages(langList)
+                            .mobile(np.getUser().getMobile() != null ? np.getUser().getMobile() : "")
+                            .city(np.getCity() != null ? np.getCity() : "")
+                            .rating(np.getAverageRating())
+                            .total_reviews(np.getTotalReviewsCount())
+                            .consultation_fee(np.getConsultationFee() != null ? np.getConsultationFee().doubleValue() : 0.0)
+                            .availability(!isBusy)
+                            .is_busy(isBusy)
+                            .distance_km(dist)
+                            .distance(dist + " km")
+                            .next_available(isBusy ? "In Service (Busy)" : "Available Now")
+                            .build();
+                })
+                .collect(Collectors.toList());
+
+        int total = items.size();
+        int pageZeroBased = Math.max(0, page - 1);
+        int start = Math.min(pageZeroBased * limit, total);
+        int end = Math.min(start + limit, total);
+        List<NurseSearchItem> paginated = items.subList(start, end);
+
+        return ResponseEntity.ok(NurseSearchResponse.builder()
+                .status(true)
+                .message(total > 0 ? "Nearby nurses found successfully" : "No available nurses found within " + radius + " km")
+                .total(total)
+                .page(page)
+                .limit(limit)
+                .data(paginated)
+                .build());
+    }
+
 }
-
-
